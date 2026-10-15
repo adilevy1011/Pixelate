@@ -12,6 +12,7 @@ public:
 
 private:
     const Token& current() const;
+    const Token& peek(std::size_t offset) const;
     bool match(TokenKind kind);
     Token consume(TokenKind kind, const char* message);
     void consumeIdentifier(const char* value);
@@ -20,8 +21,33 @@ private:
     int consumeNumber(const char* message);
 
     ElementNode parseElement(ElementType type);
+    void parseWindowBlock(ProgramNode& program);
+    void parseScriptBlock(ProgramNode& program);
+    void parseElementIntoProgram(ProgramNode& program);
+    void parseCloseTrigger(ProgramNode& program);
+    VariableDeclaration parseVariableDeclaration(
+        const std::string& typeName
+    );
+    std::shared_ptr<Statement> parseStatement();
+    std::vector<std::shared_ptr<Statement>> parseStatementBlock(
+        const char* owner
+    );
+    ValueExpression parseValueExpression();
+    Condition parseCondition(bool parenthesized = true);
+    ComparisonOperator parseComparisonOperator();
+    std::shared_ptr<Statement> parseIfStatement();
+    std::shared_ptr<Statement> parseWhileStatement();
+    std::shared_ptr<Statement> parseForStatement();
+    std::shared_ptr<Statement> parseIncrementStatement();
+    std::shared_ptr<Statement> parseTriggerStatement();
+    UpdateAction parsePropertyAssignment();
+    std::shared_ptr<Statement> parseUpdateStatement();
+    UpdateBlock parseUpdateBlock(const std::string& targetId);
+    UpdateAction parseObjectProperty(const std::string& targetId);
+    std::variant<std::string, UpdateAction::TextTemplate> parseTextValue();
     void parseElementProperty(ElementNode& element);
-    SetTextAction parseClickAction();
+    std::vector<UpdateAction> parseClickAction();
+    UpdateAction parseUpdateAction();
 
     std::vector<Token> tokens_;
     std::size_t position_ = 0;

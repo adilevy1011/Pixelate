@@ -80,6 +80,22 @@ std::vector<Token> Lexer::tokenize() const {
                 advance();
             }
 
+            if (index < source_.size() && source_[index] == '.') {
+                value.push_back('.');
+                advance();
+
+                if (index >= source_.size() ||
+                    !std::isdigit(static_cast<unsigned char>(source_[index]))) {
+                    throw std::runtime_error("Expected digits after decimal point.");
+                }
+
+                while (index < source_.size() &&
+                       std::isdigit(static_cast<unsigned char>(source_[index]))) {
+                    value.push_back(source_[index]);
+                    advance();
+                }
+            }
+
             tokens.push_back({
                 TokenKind::Number,
                 value,
@@ -131,10 +147,95 @@ std::vector<Token> Lexer::tokenize() const {
             continue;
         }
 
+        if (current == '\'') {
+            char value;
+            advance();
+
+            if (index >= source_.size()) {
+                throw std::runtime_error("Unterminated character literal.");
+            }
+
+            if (source_[index] == '\\') {
+                advance();
+
+                if (index >= source_.size()) {
+                    throw std::runtime_error("Unterminated character literal.");
+                }
+
+                switch (source_[index]) {
+                    case 'n': value = '\n'; break;
+                    case 't': value = '\t'; break;
+                    case '\'': value = '\''; break;
+                    case '\\': value = '\\'; break;
+                    default:
+                        throw std::runtime_error("Unknown character escape.");
+                }
+            } else {
+                value = source_[index];
+            }
+
+            advance();
+
+            if (index >= source_.size() || source_[index] != '\'') {
+                throw std::runtime_error("Character literals must contain one character.");
+            }
+
+            advance();
+            tokens.push_back({
+                TokenKind::Character,
+                std::string(1, value),
+                tokenLine,
+                tokenColumn
+            });
+            continue;
+        }
+
         TokenKind kind;
 
         switch (current) {
             case ':': kind = TokenKind::Colon; break;
+            case '.': kind = TokenKind::Dot; break;
+            case '=':
+                if (index + 1 < source_.size() && source_[index + 1] == '=') {
+                    kind = TokenKind::EqualEqual;
+                    advance();
+                } else {
+                    kind = TokenKind::Equals;
+                }
+                break;
+            case '!':
+                if (index + 1 >= source_.size() || source_[index + 1] != '=') {
+                    throw std::runtime_error("Unexpected '!'.");
+                }
+                kind = TokenKind::NotEqual;
+                advance();
+                break;
+            case '<':
+                if (index + 1 < source_.size() && source_[index + 1] == '=') {
+                    kind = TokenKind::LessEqual;
+                    advance();
+                } else {
+                    kind = TokenKind::Less;
+                }
+                break;
+            case '>':
+                if (index + 1 < source_.size() && source_[index + 1] == '=') {
+                    kind = TokenKind::GreaterEqual;
+                    advance();
+                } else {
+                    kind = TokenKind::Greater;
+                }
+                break;
+            case '+':
+                if (index + 1 >= source_.size() || source_[index + 1] != '+') {
+                    throw std::runtime_error("Expected '++'.");
+                }
+                kind = TokenKind::Increment;
+                advance();
+                break;
+            case '(': kind = TokenKind::OpenParen; break;
+            case ')': kind = TokenKind::CloseParen; break;
+            case ';': kind = TokenKind::Semicolon; break;
             case '{': kind = TokenKind::OpenBrace; break;
             case '}': kind = TokenKind::CloseBrace; break;
             default:

@@ -1,0 +1,120 @@
+window {
+    title: "Pixelate UI Demo"
+    width: 900
+    height: 650
+    iconPath: "window\\pixelate.ico"
+    background: 245 247 252
+}
+
+script {
+    short version = 1
+    long users = 128
+    float opacity = 0.85
+    char grade = 'A'
+    bool darkMode = false
+    String appName = "Pixelate"
+
+    add label heading {
+        text: "Pixelate UI Library"
+        x: 40
+        y: 35
+        width: 820
+        height: 45
+    }
+
+    add label description {
+        text: "A small example of windows, widgets, updates, and button actions."
+        x: 40
+        y: 90
+        width: 820
+        height: 35
+    }
+
+    add label info {
+        text: "Loading application information..."
+        x: 40
+        y: 150
+        width: 820
+        height: 35
+    }
+
+    add label state {
+        text: "Choose an action below."
+        x: 40
+        y: 205
+        width: 820
+        height: 35
+    }
+
+    add button titleButton {
+        text: "Change title"
+        x: 40
+        y: 280
+        width: 220
+        height: 55
+        onclick {
+            update window.title = "Pixelate title changed"
+            update state.text = "The window title was updated."
+        }
+    }
+
+    add button colorButton {
+        text: "Change background"
+        x: 285
+        y: 280
+        width: 220
+        height: 55
+        onclick {
+            update window.background = 225 235 250
+            update state.text = "The window background was updated."
+        }
+    }
+
+    add button cursorButton {
+        text: "Use hand cursor"
+        x: 530
+        y: 280
+        width: 220
+        height: 55
+        onclick {
+            update mouse.shape = HAND
+            update state.text = "The mouse cursor is now HAND."
+        }
+    }
+
+    add button resetButton {
+        text: "Reset demo"
+        x: 40
+        y: 365
+        width: 220
+        height: 55
+        onclick {
+            update window.title = "Pixelate UI Demo"
+            update window.background = 245 247 252
+            update mouse.shape = ARROW
+            update state.text = "The demo was reset."
+        }
+    }
+
+    # A formatted string can read variables and built-in values.
+    info.text = f"App: {appName} | version: {version} | users: {users} | grade: {grade}"
+
+    # A block updates several properties on one object at once.
+    update description {
+        text: "This label was positioned and resized with one update block."
+        x: 60
+        width: 780
+    }
+
+    # Single-field assignments do not need the update keyword.
+    state.text = f"Opacity: {opacity} | dark mode: {darkMode}"
+
+    if (darkMode == false) {
+        update window.background = 245 247 252
+    }
+
+    add CLOSE_TRIGGER {
+        message: "Close the Pixelate demo?"
+        options: YESNO
+    }
+}

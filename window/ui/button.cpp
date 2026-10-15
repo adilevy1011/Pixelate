@@ -6,6 +6,14 @@ Button::Button(std::wstring text)
     : text_(std::move(text)) {
 }
 
+void Button::setText(std::wstring text) {
+    text_ = std::move(text);
+}
+
+const std::wstring& Button::text() const {
+    return text_;
+}
+
 void Button::draw(DrawContext& context) {
     context.fillRectangle(
         x_,

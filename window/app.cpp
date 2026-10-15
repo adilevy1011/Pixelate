@@ -9,9 +9,22 @@ struct App::Impl {
     App* owner = nullptr;
     HINSTANCE hInstance{};
     HWND hwnd{};
+    HBRUSH backgroundBrush{};
+    MouseShape mouseShape = MouseShape::Arrow;
+    bool mouseShapeConfigured = false;
+    MouseMoveHandler mouseMoveHandler;
+    TickHandler tickHandler;
+
+    ~Impl();
 
     bool create();
     int run();
+    void setTitle(const std::wstring& title);
+    void setBackgroundColor(AppColor color);
+    void setMouseShape(MouseShape shape);
+    MousePosition mousePosition() const;
+    void setOnMouseMove(MouseMoveHandler handler);
+    void setOnTick(TickHandler handler);
 
     static LRESULT CALLBACK WindowProc(
         HWND hwnd,
@@ -37,6 +50,12 @@ App::App(AppOptions options)
 
 App::~App() = default;
 
+App::Impl::~Impl() {
+    if (backgroundBrush) {
+        DeleteObject(backgroundBrush);
+    }
+}
+
 bool App::create() {
     return impl_->create();
 }
@@ -54,6 +73,123 @@ void App::requestRedraw() {
         InvalidateRect(impl_->hwnd, nullptr, TRUE);
     }
 }
+
+void App::setTitle(const std::wstring& title) {
+    impl_->setTitle(title);
+}
+
+void App::setBackgroundColor(AppColor color) {
+    impl_->setBackgroundColor(color);
+}
+
+void App::setMouseShape(MouseShape shape) {
+    impl_->setMouseShape(shape);
+}
+
+MousePosition App::mousePosition() const {
+    return impl_->mousePosition();
+}
+
+void App::setOnMouseMove(MouseMoveHandler handler) {
+    impl_->setOnMouseMove(std::move(handler));
+}
+
+void App::setOnTick(TickHandler handler) {
+    impl_->setOnTick(std::move(handler));
+}
+
+void App::Impl::setTitle(const std::wstring& title) {
+    options.title = title;
+
+    if (hwnd) {
+        SetWindowTextW(hwnd, options.title.c_str());
+    }
+}
+
+void App::Impl::setBackgroundColor(AppColor color) {
+    HBRUSH newBrush = CreateSolidBrush(RGB(
+        color.red,
+        color.green,
+        color.blue
+    ));
+
+    if (!newBrush) {
+        return;
+    }
+
+    HBRUSH oldBrush = backgroundBrush;
+    backgroundBrush = newBrush;
+    options.backgroundColor = color;
+
+    if (hwnd) {
+        SetClassLongPtrW(
+            hwnd,
+            GCLP_HBRBACKGROUND,
+            reinterpret_cast<LONG_PTR>(backgroundBrush)
+        );
+        InvalidateRect(hwnd, nullptr, TRUE);
+    }
+
+    if (oldBrush) {
+        DeleteObject(oldBrush);
+    }
+}
+
+void App::Impl::setMouseShape(MouseShape shape) {
+    mouseShape = shape;
+    mouseShapeConfigured = true;
+
+    if (hwnd) {
+        InvalidateRect(hwnd, nullptr, TRUE);
+    }
+}
+
+MousePosition App::Impl::mousePosition() const {
+    POINT position{};
+    GetCursorPos(&position);
+
+    if (hwnd) {
+        ScreenToClient(hwnd, &position);
+    }
+
+    return {position.x, position.y};
+}
+
+void App::Impl::setOnMouseMove(MouseMoveHandler handler) {
+    mouseMoveHandler = std::move(handler);
+}
+
+void App::Impl::setOnTick(TickHandler handler) {
+    tickHandler = std::move(handler);
+}
+
+static HCURSOR loadMouseCursor(MouseShape shape) {
+    WORD resource = 32512;
+
+    switch (shape) {
+        case MouseShape::Arrow: resource = 32512; break;
+        case MouseShape::IBeam: resource = 32513; break;
+        case MouseShape::Wait: resource = 32514; break;
+        case MouseShape::Cross: resource = 32515; break;
+        case MouseShape::UpArrow: resource = 32516; break;
+        case MouseShape::Size: resource = 32640; break;
+        case MouseShape::Icon: resource = 32641; break;
+        case MouseShape::SizeNWSE: resource = 32642; break;
+        case MouseShape::SizeNESW: resource = 32643; break;
+        case MouseShape::SizeWE: resource = 32644; break;
+        case MouseShape::SizeNS: resource = 32645; break;
+        case MouseShape::SizeAll: resource = 32646; break;
+        case MouseShape::No: resource = 32648; break;
+        case MouseShape::Hand: resource = 32649; break;
+        case MouseShape::AppStarting: resource = 32650; break;
+        case MouseShape::Help: resource = 32651; break;
+        case MouseShape::Pin: resource = 32671; break;
+        case MouseShape::Person: resource = 32672; break;
+    }
+
+    return LoadCursorW(nullptr, MAKEINTRESOURCEW(resource));
+}
+
 bool App::Impl::create() {
     WNDCLASSEXW windowClass{};
 
@@ -85,7 +221,24 @@ bool App::Impl::create() {
             LR_LOADFROMFILE
         )
     );
-    windowClass.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+    backgroundBrush = CreateSolidBrush(RGB(
+        options.backgroundColor.red,
+        options.backgroundColor.green,
+        options.backgroundColor.blue
+    ));
+
+    if (!backgroundBrush) {
+        MessageBoxW(
+            nullptr,
+            L"Background brush creation failed.",
+            L"Error",
+            MB_OK | MB_ICONERROR
+        );
+
+        return false;
+    }
+
+    windowClass.hbrBackground = backgroundBrush;
     windowClass.lpszClassName = L"Pixelate";
 
     if (!RegisterClassExW(&windowClass)) {
@@ -127,6 +280,7 @@ bool App::Impl::create() {
 
     ShowWindow(hwnd, SW_SHOWDEFAULT);
     UpdateWindow(hwnd);
+    SetTimer(hwnd, 1, 50, nullptr);
 
     return true;
 }
@@ -187,6 +341,11 @@ LRESULT App::Impl::handleMessage(
 ) {
     switch (message) {
         case WM_SETCURSOR: {
+            if (mouseShapeConfigured) {
+                SetCursor(loadMouseCursor(mouseShape));
+                return TRUE;
+            }
+
             POINT cursorPosition{};
             GetCursorPos(&cursorPosition);
             ScreenToClient(hwnd, &cursorPosition);
@@ -239,9 +398,26 @@ LRESULT App::Impl::handleMessage(
 
             return 0;
         }
+        case WM_MOUSEMOVE:
+            if (mouseMoveHandler) {
+                mouseMoveHandler({
+                    GET_X_LPARAM(lParam),
+                    GET_Y_LPARAM(lParam)
+                });
+            }
+            return 0;
+        case WM_TIMER:
+            if (wParam == 1 && tickHandler) {
+                tickHandler();
+            }
+            return 0;
         case WM_PAINT: {
             PAINTSTRUCT paint{};
             HDC deviceContext = BeginPaint(hwnd, &paint);
+
+            // Clear the paint area before drawing transparent text. Without
+            // this, changing a label can leave its previous glyphs behind.
+            FillRect(deviceContext, &paint.rcPaint, backgroundBrush);
 
             DrawContext context(deviceContext);
 
@@ -253,9 +429,14 @@ LRESULT App::Impl::handleMessage(
             return 0;
         }
         case WM_CLOSE:
+            if (!options.closeTrigger.enabled) {
+                DestroyWindow(hwnd);
+                return 0;
+            }
+
             if (MessageBoxW(
                     hwnd,
-                    L"Do you really want to exit?",
+                    options.closeTrigger.message.c_str(),
                     L"Confirm",
                     MB_YESNO | MB_ICONQUESTION
                 ) == IDYES) {

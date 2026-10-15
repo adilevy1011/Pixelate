@@ -14,6 +14,10 @@ public:
 
     void setPosition(int x, int y);
     void setSize(int width, int height);
+    int x() const { return x_; }
+    int y() const { return y_; }
+    int width() const { return width_; }
+    int height() const { return height_; }
     
     bool containsPoint(int x, int y) const;
 

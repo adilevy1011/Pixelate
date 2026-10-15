@@ -1,0 +1,21 @@
+#include "widget.h"
+
+void Widget::setPosition(int x, int y){
+    x_ = x;
+    y_ = y;
+}
+void Widget::setSize(int width, int height){
+    width_= width;
+    height_ = height;
+}
+
+bool Widget::containsPoint(int x, int y) const {
+    return x >= x_
+        && x <= x_ + width_
+        && y >= y_
+        && y <= y_ + height_;
+}
+
+bool Widget::onMouseDown(int, int) {
+    return false;
+}

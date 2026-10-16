@@ -34,6 +34,16 @@ Token Parser::consume(TokenKind kind, const char* message) {
     return tokens_.at(position_++);
 }
 
+void Parser::consumeFieldSeparator(const char* message) {
+    // Fields are comma-delimited, but the final field may be followed
+    // directly by the closing brace (like a Python dictionary literal).
+    if (current().kind == TokenKind::CloseBrace) {
+        return;
+    }
+
+    consume(TokenKind::Comma, message);
+}
+
 void Parser::consumeIdentifier(const char* value) {
     Token token = consume(TokenKind::Identifier, "Expected identifier.");
 
@@ -151,23 +161,23 @@ WindowNode Parser::parseWindowBlock() {
         if (token.text == "id") {
             consume(TokenKind::Colon, "Expected ':' after id.");
             window.id = consumeString("Expected window id.");
-            consume(TokenKind::Semicolon, "Expected ';' after id.");
+            consumeFieldSeparator("Expected ',' after id.");
         } else if (token.text == "title") {
             consume(TokenKind::Colon, "Expected ':' after title.");
             window.title = consumeString("Expected window title.");
-            consume(TokenKind::Semicolon, "Expected ';' after title.");
+            consumeFieldSeparator("Expected ',' after title.");
         } else if (token.text == "width") {
             consume(TokenKind::Colon, "Expected ':' after width.");
             window.width = consumeNumber("Expected window width.");
-            consume(TokenKind::Semicolon, "Expected ';' after width.");
+            consumeFieldSeparator("Expected ',' after width.");
         } else if (token.text == "height") {
             consume(TokenKind::Colon, "Expected ':' after height.");
             window.height = consumeNumber("Expected window height.");
-            consume(TokenKind::Semicolon, "Expected ';' after height.");
+            consumeFieldSeparator("Expected ',' after height.");
         } else if (token.text == "iconPath") {
             consume(TokenKind::Colon, "Expected ':' after iconPath.");
             window.iconPath = consumeString("Expected icon path.");
-            consume(TokenKind::Semicolon, "Expected ';' after iconPath.");
+            consumeFieldSeparator("Expected ',' after iconPath.");
         } else if (token.text == "background") {
             consume(TokenKind::Colon, "Expected ':' after background.");
             window.background.red = consumeNumber("Expected red channel.");
@@ -181,7 +191,7 @@ WindowNode Parser::parseWindowBlock() {
                     "Background color channels must be between 0 and 255."
                 );
             }
-            consume(TokenKind::Semicolon, "Expected ';' after background.");
+            consumeFieldSeparator("Expected ',' after background.");
         } else if (token.text == "label" || token.text == "button" ||
                    token.text == "textbox") {
             Token id = consume(TokenKind::Identifier, "Expected element id.");
@@ -357,7 +367,7 @@ void Parser::parseCloseTrigger(ProgramNode& program) {
         if (property.text == "message") {
             consume(TokenKind::Colon, "Expected ':' after message.");
             trigger.message = consumeString("Expected close message.");
-            consume(TokenKind::Semicolon, "Expected ';' after message.");
+            consumeFieldSeparator("Expected ',' after message.");
         } else if (property.text == "options") {
             consume(TokenKind::Colon, "Expected ':' after options.");
             trigger.option = consume(
@@ -370,7 +380,7 @@ void Parser::parseCloseTrigger(ProgramNode& program) {
                     "The only supported CLOSE_TRIGGER option is YESNO."
                 );
             }
-            consume(TokenKind::Semicolon, "Expected ';' after options.");
+            consumeFieldSeparator("Expected ',' after options.");
         } else {
             throw std::runtime_error("Unknown CLOSE_TRIGGER property.");
         }
@@ -421,7 +431,7 @@ void Parser::parseElementProperty(ElementNode& element) {
     if (property.text == "text") {
         consume(TokenKind::Colon, "Expected ':' after text.");
         element.text = parseTextValue();
-        consume(TokenKind::Semicolon, "Expected ';' after text.");
+        consumeFieldSeparator("Expected ',' after text.");
     } else if (property.text == "placeholder") {
         if (element.type != ElementType::TextBox) {
             throw std::runtime_error(
@@ -430,25 +440,26 @@ void Parser::parseElementProperty(ElementNode& element) {
         }
         consume(TokenKind::Colon, "Expected ':' after placeholder.");
         element.placeholder = consumeString("Expected placeholder text.");
-        consume(TokenKind::Semicolon, "Expected ';' after placeholder.");
+        consumeFieldSeparator("Expected ',' after placeholder.");
     } else if (property.text == "x") {
         consume(TokenKind::Colon, "Expected ':' after x.");
         element.x = consumeNumber("Expected x position.");
-        consume(TokenKind::Semicolon, "Expected ';' after x.");
+        consumeFieldSeparator("Expected ',' after x.");
     } else if (property.text == "y") {
         consume(TokenKind::Colon, "Expected ':' after y.");
         element.y = consumeNumber("Expected y position.");
-        consume(TokenKind::Semicolon, "Expected ';' after y.");
+        consumeFieldSeparator("Expected ',' after y.");
     } else if (property.text == "width") {
         consume(TokenKind::Colon, "Expected ':' after width.");
         element.width = consumeNumber("Expected element width.");
-        consume(TokenKind::Semicolon, "Expected ';' after width.");
+        consumeFieldSeparator("Expected ',' after width.");
     } else if (property.text == "height") {
         consume(TokenKind::Colon, "Expected ':' after height.");
         element.height = consumeNumber("Expected element height.");
-        consume(TokenKind::Semicolon, "Expected ';' after height.");
+        consumeFieldSeparator("Expected ',' after height.");
     } else if (property.text == "onclick") {
         element.onClick = parseClickAction();
+        consumeFieldSeparator("Expected ',' after onclick.");
     } else {
         throw std::runtime_error("Unknown element property.");
     }
@@ -538,7 +549,7 @@ UpdateAction Parser::parseObjectProperty(const std::string& targetId) {
         }
     }
 
-    consume(TokenKind::Semicolon, "Expected ';' after update property.");
+    consumeFieldSeparator("Expected ',' after update property.");
 
     return action;
 }

@@ -1,24 +1,24 @@
 window {
-    id: "main";
-    title: "Main Window";
-    width: 700;
-    height: 460;
-    background: 245 247 252;
+    id: "main",
+    title: "Main Window",
+    width: 700,
+    height: 460,
+    background: 245 247 252,
 
     label heading {
-        text: "Multiple windows";
-        x: 40;
-        y: 40;
-        width: 620;
-        height: 40;
+        text: "Multiple windows",
+        x: 40,
+        y: 40,
+        width: 620,
+        height: 40,
     }
 
     button openSettings {
-        text: "Open settings";
-        x: 40;
-        y: 130;
-        width: 220;
-        height: 55;
+        text: "Open settings",
+        x: 40,
+        y: 130,
+        width: 220,
+        height: 55,
         onclick {
             switch_view("settings");
         }
@@ -26,26 +26,26 @@ window {
 }
 
 window {
-    id: "settings";
-    title: "Settings Window";
-    width: 600;
-    height: 400;
-    background: 235 245 240;
+    id: "settings",
+    title: "Settings Window",
+    width: 600,
+    height: 400,
+    background: 235 245 240,
 
     label heading {
-        text: "Settings";
-        x: 40;
-        y: 40;
-        width: 500;
-        height: 40;
+        text: "Settings",
+        x: 40,
+        y: 40,
+        width: 500,
+        height: 40,
     }
 
     button keepMainOpen {
-        text: "Open main without closing this window";
-        x: 40;
-        y: 130;
-        width: 300;
-        height: 55;
+        text: "Open main without closing this window",
+        x: 40,
+        y: 130,
+        width: 300,
+        height: 55,
         onclick {
             switch_view("main");
         }

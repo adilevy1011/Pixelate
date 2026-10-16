@@ -15,6 +15,7 @@ private:
     const Token& peek(std::size_t offset) const;
     bool match(TokenKind kind);
     Token consume(TokenKind kind, const char* message);
+    void consumeFieldSeparator(const char* message);
     void consumeIdentifier(const char* value);
 
     std::string consumeString(const char* message);

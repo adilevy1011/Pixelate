@@ -1,4 +1,4 @@
-﻿# PXL language reference
+# PXL language reference
 
 ## Program structure
 
@@ -6,7 +6,7 @@ Every program requires one window block and may contain a script block.
 
 ~~~pxl
 window {
-    title: "Example";
+    title: "Example",
 }
 
 script {
@@ -24,13 +24,13 @@ first; otherwise the first window is selected.
 
 ~~~pxl
 window {
-    id: "main";
-    title: "Main";
+    id: "main",
+    title: "Main",
 }
 
 window {
-    id: "settings";
-    title: "Settings";
+    id: "settings",
+    title: "Settings",
 }
 ~~~
 

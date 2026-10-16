@@ -1,4 +1,4 @@
-﻿# Events and mouse support
+# Events and mouse support
 
 ## Button clicks
 
@@ -6,7 +6,7 @@ Buttons support onclick blocks containing update actions.
 
 ~~~pxl
 add button clickMe {
-    text: "Click me";
+    text: "Click me",
 
     onclick {
         update greeting.text = "The button was clicked!";
@@ -62,8 +62,8 @@ Windows close immediately by default. Add a close trigger for a Yes/No dialog:
 
 ~~~pxl
 add CLOSE_TRIGGER {
-    message: "Do you want to close this app?";
-    options: YESNO;
+    message: "Do you want to close this app?",
+    options: YESNO,
 }
 ~~~
 

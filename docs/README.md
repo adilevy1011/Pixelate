@@ -1,4 +1,4 @@
-﻿# Getting started with Pixelate
+# Getting started with Pixelate
 
 Pixelate is a small Windows UI library and interpreted language for creating graphical applications with .pxl files.
 
@@ -33,19 +33,19 @@ Create a file such as programs/my_app.pxl:
 
 ~~~pxl
 window {
-    title: "My First Pixelate App";
-    width: 800;
-    height: 600;
-    background: 240 245 250;
+    title: "My First Pixelate App",
+    width: 800,
+    height: 600,
+    background: 240 245 250,
 }
 
 script {
     add label greeting {
-        text: "Hello from Pixelate!";
-        x: 50;
-        y: 50;
-        width: 300;
-        height: 40;
+        text: "Hello from Pixelate!",
+        x: 50,
+        y: 50,
+        width: 300,
+        height: 40,
     }
 }
 ~~~

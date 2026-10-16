@@ -1,8 +1,8 @@
 window {
-    title: "PXL Conditions";
-    width: 700;
-    height: 420;
-    background: 245 247 252;
+    title: "PXL Conditions",
+    width: 700,
+    height: 420,
+    background: 245 247 252,
 }
 
 script {
@@ -10,19 +10,19 @@ script {
     bool passed = true;
 
     add label heading {
-        text: "Conditions";
-        x: 40;
-        y: 35;
-        width: 620;
-        height: 45;
+        text: "Conditions",
+        x: 40,
+        y: 35,
+        width: 620,
+        height: 45,
     }
 
     add label result {
-        text: "Checking score...";
-        x: 40;
-        y: 110;
-        width: 620;
-        height: 35;
+        text: "Checking score...",
+        x: 40,
+        y: 110,
+        width: 620,
+        height: 35,
     }
 
     if (score >= 60) {

@@ -1,4 +1,4 @@
-﻿# Windows and widgets
+# Windows and widgets
 
 ## Window options
 
@@ -16,11 +16,11 @@ Defaults are 800x600, Pixelate App, window\\pixelate.ico, and a white background
 
 ~~~pxl
 window {
-    title: "My App";
-    width: 900;
-    height: 650;
-    iconPath: "window\\pixelate.ico";
-    background: 245 247 252;
+    title: "My App",
+    width: 900,
+    height: 650,
+    iconPath: "window\\pixelate.ico",
+    background: 245 247 252,
 }
 ~~~
 
@@ -30,28 +30,28 @@ Labels, buttons, and textboxes support text, x, y, width, and height.
 
 ~~~pxl
 add label greeting {
-    text: "Hello!";
-    x: 50;
-    y: 50;
-    width: 300;
-    height: 40;
+    text: "Hello!",
+    x: 50,
+    y: 50,
+    width: 300,
+    height: 40,
 }
 
 add button clickMe {
-    text: "Click me";
-    x: 50;
-    y: 120;
-    width: 200;
-    height: 50;
+    text: "Click me",
+    x: 50,
+    y: 120,
+    width: 200,
+    height: 50,
 }
 
 add textbox nameInput {
-    text: "";
-    placeholder: "Type here";
-    x: 50;
-    y: 190;
-    width: 300;
-    height: 30;
+    text: "",
+    placeholder: "Type here",
+    x: 50,
+    y: 190,
+    width: 300,
+    height: 30,
 }
 ~~~
 
@@ -63,19 +63,19 @@ contents with `textboxId.text`, including inside an f-string:
 
 ~~~pxl
 add label result {
-    text: "Waiting for input...";
-    x: 50;
-    y: 240;
-    width: 400;
-    height: 35;
+    text: "Waiting for input...",
+    x: 50,
+    y: 240,
+    width: 400,
+    height: 35,
 }
 
 add button showInput {
-    text: "Show input";
-    x: 50;
-    y: 290;
-    width: 180;
-    height: 45;
+    text: "Show input",
+    x: 50,
+    y: 290,
+    width: 180,
+    height: 45,
     onclick {
         result.text = f"You entered: {nameInput.text}";
     }
@@ -97,10 +97,10 @@ Use an update block to change several fields:
 
 ~~~pxl
 update greeting {
-    text: "Updated text";
-    x: 100;
-    y: 120;
-    width: 300;
-    height: 50;
+    text: "Updated text",
+    x: 100,
+    y: 120,
+    width: 300,
+    height: 50,
 }
 ~~~

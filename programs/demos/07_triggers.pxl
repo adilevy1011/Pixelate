@@ -1,35 +1,35 @@
 window {
-    title: "PXL Triggers";
-    width: 700;
-    height: 460;
-    background: 245 247 252;
+    title: "PXL Triggers",
+    width: 700,
+    height: 460,
+    background: 245 247 252,
 }
 
 script {
     int count = 0;
 
     add label heading {
-        text: "Live triggers";
-        x: 40;
-        y: 35;
-        width: 620;
-        height: 45;
+        text: "Live triggers",
+        x: 40,
+        y: 35,
+        width: 620,
+        height: 45,
     }
 
     add label status {
-        text: "The condition is not active yet.";
-        x: 40;
-        y: 110;
-        width: 620;
-        height: 35;
+        text: "The condition is not active yet.",
+        x: 40,
+        y: 110,
+        width: 620,
+        height: 35,
     }
 
     add button activateButton {
-        text: "Activate condition";
-        x: 40;
-        y: 180;
-        width: 230;
-        height: 55;
+        text: "Activate condition",
+        x: 40,
+        y: 180,
+        width: 230,
+        height: 55,
         onclick {
             count = 1;
         }

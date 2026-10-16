@@ -9,24 +9,36 @@ The window block supports:
 | title | Window title text. |
 | width | Window width in pixels. |
 | height | Window height in pixels. |
-| iconPath | Path to an .ico file. |
+| iconPath | Path to an .ico file. Relative paths are resolved from the current directory, then beside `pixelate.exe`. |
 | background | RGB color with channels from 0 to 255. |
 
-Defaults are 800x600, Pixelate App, window\\pixelate.ico, and a white background.
+Defaults are 800x600, Pixelate App, pixelate.ico, and a white background. Place
+the default icon beside `pixelate.exe` when launching Pixelate from `PATH`.
 
 ~~~pxl
 window {
     title: "My App",
     width: 900,
     height: 650,
-    iconPath: "window\\pixelate.ico",
+    iconPath: "pixelate.ico",
     background: 245 247 252,
 }
 ~~~
 
-## Labels, buttons, and textboxes
+## Labels, paragraphs, buttons, textboxes, and textareas
 
-Labels, buttons, and textboxes support text, x, y, width, and height.
+Labels, paragraphs, buttons, textboxes, and textareas support text, x, y, width, height, font, and fontSize.
+
+Font constants include `DEFAULT`, `ARIAL`, `CALIBRI`, `CONSOLAS`, `COURIERNEW`,
+`TIMESNEWROMAN`, `TAHOMA`, and `VERDANA`.
+
+The default font size is 16 pixels. Set `fontSize` explicitly to use another size.
+
+`label` is intended for short, single-line text. `par` renders text from the
+top-left of its bounds, honors explicit newlines, and wraps long lines.
+
+`textarea` is a multiline editable text input. It accepts Enter for newlines and
+shows a vertical scrollbar when the content is taller than the control.
 
 ~~~pxl
 add label greeting {
@@ -53,13 +65,56 @@ add textbox nameInput {
     width: 300,
     height: 30,
 }
+
+add textarea notesInput {
+    text: "",
+    placeholder: "Write notes...",
+    x: 50,
+    y: 240,
+    width: 400,
+    height: 140,
+}
 ~~~
+
+Text styling can be set in a widget declaration:
+
+~~~pxl
+add par body {
+    text: "This paragraph uses Arial at 18 pixels.",
+    font: ARIAL,
+    fontSize: 18,
+    x: 50,
+    y: 400,
+    width: 500,
+    height: 80,
+}
+~~~
+
+It can also be changed at runtime with `update body.font = CONSOLAS;` or
+`update body.fontSize = 20;`.
+
+The current font and size can be used in conditions:
+
+~~~pxl
+if (body.font == ARIAL) {
+    body.text = "This is using Arial.";
+}
+
+if (body.fontSize >= 18) {
+    body.text = "This is large text.";
+}
+~~~
+
+Numeric font sizes can be incremented directly, for example
+`body.fontSize++;`.
+
+They can also be decremented with `body.fontSize--;`.
 
 Widgets can be declared inside window or added inside script.
 
-Textboxes are editable while the program is running. The optional
+Textboxes and textareas are editable while the program is running. The optional
 `placeholder` is shown only while the textbox is empty. Read the current
-contents with `textboxId.text`, including inside an f-string:
+contents with `textboxId.text` or `textareaId.text`, including inside an f-string:
 
 ~~~pxl
 add label result {

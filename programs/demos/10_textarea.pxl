@@ -1,0 +1,47 @@
+window {
+    title: "PXL TextArea",
+    width: 700,
+    height: 500,
+}
+
+script {
+    add label prompt {
+        text: "Write something below:",
+        font: ARIAL,
+        fontSize: 18,
+        x: 40,
+        y: 35,
+        width: 300,
+        height: 30,
+    }
+
+    add textarea notes {
+        text: "",
+        placeholder: "Type multiple lines here...",
+        x: 40,
+        y: 80,
+        width: 500,
+        height: 120,
+    }
+
+    add par result {
+        text: "",
+        x: 40,
+        y: 220,
+        width: 600,
+        height: 100,
+    }
+
+    add button showNotes {
+        text: "Read textarea",
+        font: CONSOLAS,
+        fontSize: 14,
+        x: 40,
+        y: 390,
+        width: 180,
+        height: 45,
+        onclick {
+            result.text = f"Current text:\n{notes.text}";
+        }
+    }
+}

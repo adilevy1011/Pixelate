@@ -10,6 +10,22 @@ struct AppColor {
     int blue = 255;
 };
 
+enum class FontFamily {
+    Default,
+    Arial,
+    Calibri,
+    Consolas,
+    CourierNew,
+    TimesNewRoman,
+    Tahoma,
+    Verdana
+};
+
+struct TextStyle {
+    FontFamily family = FontFamily::Default;
+    int size = 16;
+};
+
 enum class CloseDialogOption {
     YesNo
 };

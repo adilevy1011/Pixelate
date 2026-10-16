@@ -7,7 +7,7 @@ Label::Label(std::wstring text)
 }
 
 void Label::draw(DrawContext& context) {
-    context.drawText(text_, x_, y_,width_,height_);
+    context.drawText(text_, x_, y_, width_, height_, textStyle_);
 }
 
 void Label::setText(std::wstring text) {

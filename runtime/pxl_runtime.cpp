@@ -4,14 +4,18 @@
 #include "../window/app.h"
 #include "../window/ui/button.h"
 #include "../window/ui/label.h"
+#include "../window/ui/paragraph.h"
 #include "../window/ui/textbox.h"
+#include "../window/ui/textarea.h"
 
 #include <exception>
+#include <iostream>
 #include <algorithm>
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+#include <unordered_map>
 
 namespace {
 
@@ -19,11 +23,88 @@ std::wstring widen(const std::string& value) {
     return std::wstring(value.begin(), value.end());
 }
 
+FontFamily fontFamilyFromName(const std::string& name) {
+    static const std::unordered_map<std::string, FontFamily> fonts = {
+        {"DEFAULT", FontFamily::Default},
+        {"ARIAL", FontFamily::Arial},
+        {"CALIBRI", FontFamily::Calibri},
+        {"CONSOLAS", FontFamily::Consolas},
+        {"COURIERNEW", FontFamily::CourierNew},
+        {"TIMESNEWROMAN", FontFamily::TimesNewRoman},
+        {"TAHOMA", FontFamily::Tahoma},
+        {"VERDANA", FontFamily::Verdana}
+    };
+    auto font = fonts.find(name);
+    return font == fonts.end() ? FontFamily::Default : font->second;
+}
+
+std::string fontFamilyName(FontFamily family) {
+    switch (family) {
+        case FontFamily::Arial: return "ARIAL";
+        case FontFamily::Calibri: return "CALIBRI";
+        case FontFamily::Consolas: return "CONSOLAS";
+        case FontFamily::CourierNew: return "COURIERNEW";
+        case FontFamily::TimesNewRoman: return "TIMESNEWROMAN";
+        case FontFamily::Tahoma: return "TAHOMA";
+        case FontFamily::Verdana: return "VERDANA";
+        case FontFamily::Default: return "DEFAULT";
+    }
+    return "DEFAULT";
+}
+
+void configureTextStyle(Widget& widget, const ElementNode& node) {
+    widget.setTextStyle({fontFamilyFromName(node.font), node.fontSize});
+}
+
 }
 
 VariableValue PxlRuntime::evaluateExpression(
     const ValueExpression& expression
 ) const {
+    if (expression.arithmetic) {
+        const VariableValue left = evaluateExpression(
+            expression.arithmetic->left
+        );
+        const VariableValue right = evaluateExpression(
+            expression.arithmetic->right
+        );
+
+        double leftNumber = 0.0;
+        double rightNumber = 0.0;
+        const bool numeric = std::visit([&](const auto& value) {
+            using Type = std::decay_t<decltype(value)>;
+            if constexpr (std::is_arithmetic_v<Type> &&
+                          !std::is_same_v<Type, bool>) {
+                leftNumber = static_cast<double>(value);
+                return true;
+            }
+            return false;
+        }, left) && std::visit([&](const auto& value) {
+            using Type = std::decay_t<decltype(value)>;
+            if constexpr (std::is_arithmetic_v<Type> &&
+                          !std::is_same_v<Type, bool>) {
+                rightNumber = static_cast<double>(value);
+                return true;
+            }
+            return false;
+        }, right);
+
+        if (!numeric) {
+            throw std::runtime_error(
+                "Arithmetic expressions require numeric operands."
+            );
+        }
+
+        const bool integers = std::holds_alternative<int>(left) &&
+            std::holds_alternative<int>(right);
+        const double result = expression.arithmetic->operation == '-'
+            ? leftNumber - rightNumber
+            : leftNumber + rightNumber;
+        return integers
+            ? VariableValue{static_cast<int>(result)}
+            : VariableValue{result};
+    }
+
     if (expression.literal) {
         return *expression.literal;
     }
@@ -48,6 +129,36 @@ VariableValue PxlRuntime::evaluateExpression(
                 const std::wstring value = textBox->text();
                 return std::string(value.begin(), value.end());
             }
+            if (auto* textArea = dynamic_cast<TextArea*>(element->second)) {
+                const std::wstring value = textArea->text();
+                return std::string(value.begin(), value.end());
+            }
+        }
+    }
+
+    if (dot != std::string::npos &&
+        (expression.variable.substr(dot + 1) == "font" ||
+         expression.variable.substr(dot + 1) == "fontSize" ||
+         expression.variable.substr(dot + 1) == "x" ||
+         expression.variable.substr(dot + 1) == "y" ||
+         expression.variable.substr(dot + 1) == "width" ||
+         expression.variable.substr(dot + 1) == "height")) {
+        const std::string id = expression.variable.substr(0, dot);
+        auto element = elements_.find(id);
+        if (element != elements_.end()) {
+            const TextStyle style = element->second->textStyle();
+            if (expression.variable.substr(dot + 1) == "font") {
+                return fontFamilyName(style.family);
+            }
+            if (expression.variable.substr(dot + 1) == "fontSize") {
+                return style.size;
+            }
+
+            const std::string property = expression.variable.substr(dot + 1);
+            if (property == "x") return element->second->x();
+            if (property == "y") return element->second->y();
+            if (property == "width") return element->second->width();
+            return element->second->height();
         }
     }
 
@@ -172,9 +283,26 @@ void PxlRuntime::applyUpdateAction(const UpdateAction& action) {
 
     Widget* widget = element->second;
 
+    auto numericValue = [this, &action]() -> std::optional<int> {
+        if (const auto* number = std::get_if<int>(&action.value)) {
+            return *number;
+        }
+        if (const auto* expression =
+                std::get_if<ValueExpression>(&action.value)) {
+            const VariableValue value = evaluateExpression(*expression);
+            if (const auto* integer = std::get_if<int>(&value)) {
+                return *integer;
+            }
+            if (const auto* decimal = std::get_if<double>(&value)) {
+                return static_cast<int>(*decimal);
+            }
+        }
+        return std::nullopt;
+    };
+
     if (action.property == "x" || action.property == "y" ||
         action.property == "width" || action.property == "height") {
-        const auto* number = std::get_if<int>(&action.value);
+        const auto number = numericValue();
         if (!number) return;
 
         int x = widget->x();
@@ -194,6 +322,21 @@ void PxlRuntime::applyUpdateAction(const UpdateAction& action) {
         return;
     }
 
+    if (action.property == "font" || action.property == "fontSize") {
+        TextStyle style = widget->textStyle();
+        if (action.property == "font") {
+            const auto* font = std::get_if<std::string>(&action.value);
+            if (!font) return;
+            style.family = fontFamilyFromName(*font);
+        } else {
+            const auto size = numericValue();
+            if (!size || *size <= 0) return;
+            style.size = *size;
+        }
+        widget->setTextStyle(style);
+        return;
+    }
+
     if (action.property != "text") return;
 
     std::string text;
@@ -208,10 +351,14 @@ void PxlRuntime::applyUpdateAction(const UpdateAction& action) {
 
     if (auto* label = dynamic_cast<Label*>(element->second)) {
         label->setText(widen(text));
+    } else if (auto* paragraph = dynamic_cast<Paragraph*>(element->second)) {
+        paragraph->setText(widen(text));
     } else if (auto* button = dynamic_cast<Button*>(element->second)) {
         button->setText(widen(text));
     } else if (auto* textBox = dynamic_cast<TextBox*>(element->second)) {
         textBox->setText(widen(text));
+    } else if (auto* textArea = dynamic_cast<TextArea*>(element->second)) {
+        textArea->setText(widen(text));
     }
 }
 
@@ -275,23 +422,45 @@ void PxlRuntime::checkTriggers() {
     }
 }
 
-void PxlRuntime::incrementVariable(const std::string& name) {
+void PxlRuntime::incrementVariable(const std::string& name, bool decrement) {
     auto variable = variables_.find(name);
     if (variable == variables_.end()) {
         throw std::runtime_error("Unknown variable: " + name);
     }
 
-    std::visit([](auto& value) {
+    std::visit([decrement](auto& value) {
         using Type = std::decay_t<decltype(value)>;
         if constexpr (std::is_arithmetic_v<Type> && !std::is_same_v<Type, bool>) {
-            ++value;
+            if (decrement) --value;
+            else ++value;
         } else {
             throw std::runtime_error("Only numeric variables can be incremented.");
         }
     }, variable->second);
 }
 
+void PxlRuntime::incrementWidgetProperty(
+    const std::string& target,
+    const std::string& property,
+    bool decrement
+) {
+    auto element = elements_.find(target);
+    if (element == elements_.end()) {
+        throw std::runtime_error("Unknown widget: " + target);
+    }
+
+    if (property != "fontSize") {
+        throw std::runtime_error("Only fontSize can be incremented on widgets.");
+    }
+
+    TextStyle style = element->second->textStyle();
+    if (decrement) --style.size;
+    else ++style.size;
+    element->second->setTextStyle(style);
+}
+
 void PxlRuntime::executeStatement(const Statement& statement) {
+    currentLine_ = statement.line;
     if (const auto* declaration = std::get_if<VariableDeclaration>(&statement.value)) {
         variables_[declaration->name] = declaration->value;
         return;
@@ -318,7 +487,15 @@ void PxlRuntime::executeStatement(const Statement& statement) {
     }
 
     if (const auto* increment = std::get_if<IncrementStatement>(&statement.value)) {
-        incrementVariable(increment->variable);
+        if (increment->property.empty()) {
+            incrementVariable(increment->target, increment->decrement);
+        } else {
+            incrementWidgetProperty(
+                increment->target,
+                increment->property,
+                increment->decrement
+            );
+        }
         return;
     }
 
@@ -360,6 +537,15 @@ void PxlRuntime::executeStatement(const Statement& statement) {
         }
         executeStatements(forStatement->body);
         incrementVariable(forStatement->incrementVariable);
+    }
+}
+
+void PxlRuntime::reportRuntimeError(const std::exception& exception) const {
+    if (currentLine_ > 0) {
+        std::cerr << "PXL runtime error on line " << currentLine_ << ": "
+                  << exception.what() << '\n';
+    } else {
+        std::cerr << "PXL runtime error: " << exception.what() << '\n';
     }
 }
 
@@ -419,8 +605,19 @@ void PxlRuntime::configureView(
             auto label = std::make_unique<Label>(widen(elementText));
             label->setPosition(node.x, node.y);
             label->setSize(node.width, node.height);
+            configureTextStyle(*label, node);
             elements_[node.id] = label.get();
             view.app->add(std::move(label));
+            continue;
+        }
+
+        if (node.type == ElementType::Paragraph) {
+            auto paragraph = std::make_unique<Paragraph>(widen(elementText));
+            paragraph->setPosition(node.x, node.y);
+            paragraph->setSize(node.width, node.height);
+            configureTextStyle(*paragraph, node);
+            elements_[node.id] = paragraph.get();
+            view.app->add(std::move(paragraph));
             continue;
         }
 
@@ -429,14 +626,27 @@ void PxlRuntime::configureView(
             textBox->setPlaceholder(widen(node.placeholder));
             textBox->setPosition(node.x, node.y);
             textBox->setSize(node.width, node.height);
+            configureTextStyle(*textBox, node);
             elements_[node.id] = textBox.get();
             view.app->add(std::move(textBox));
+            continue;
+        }
+
+        if (node.type == ElementType::TextArea) {
+            auto textArea = std::make_unique<TextArea>(widen(elementText));
+            textArea->setPlaceholder(widen(node.placeholder));
+            textArea->setPosition(node.x, node.y);
+            textArea->setSize(node.width, node.height);
+            configureTextStyle(*textArea, node);
+            elements_[node.id] = textArea.get();
+            view.app->add(std::move(textArea));
             continue;
         }
 
         auto button = std::make_unique<Button>(widen(elementText));
         button->setPosition(node.x, node.y);
         button->setSize(node.width, node.height);
+        configureTextStyle(*button, node);
         elements_[node.id] = button.get();
 
         if (node.onClick) {
@@ -444,14 +654,18 @@ void PxlRuntime::configureView(
             RuntimeView* viewPointer = &view;
 
             button->setOnClick([this, actions, viewPointer] {
-                activeView_ = viewPointer;
-                app_ = viewPointer->app.get();
-                elements_ = viewPointer->elements;
-                executeStatements(actions);
-                viewPointer->elements = elements_;
+                try {
+                    activeView_ = viewPointer;
+                    app_ = viewPointer->app.get();
+                    elements_ = viewPointer->elements;
+                    executeStatements(actions);
+                    viewPointer->elements = elements_;
 
-                if (app_) {
-                    app_->requestRedraw();
+                    if (app_) {
+                        app_->requestRedraw();
+                    }
+                } catch (const std::exception& exception) {
+                    reportRuntimeError(exception);
                 }
             });
         }
@@ -584,7 +798,8 @@ int PxlRuntime::run() {
                 fireMouseMoveTriggers();
                 viewPointer->elements = elements_;
                 app_->requestRedraw();
-            } catch (const std::exception&) {
+            } catch (const std::exception& exception) {
+                reportRuntimeError(exception);
             }
         });
         view->app->setOnTick([this, viewPointer] {
@@ -595,7 +810,8 @@ int PxlRuntime::run() {
                 checkTriggers();
                 viewPointer->elements = elements_;
                 app_->requestRedraw();
-            } catch (const std::exception&) {
+            } catch (const std::exception& exception) {
+                reportRuntimeError(exception);
             }
         });
     }
@@ -603,7 +819,8 @@ int PxlRuntime::run() {
     try {
         executeStatements(statements_);
         app_->requestRedraw();
-    } catch (const std::exception&) {
+    } catch (const std::exception& exception) {
+        reportRuntimeError(exception);
         return 1;
     }
 

@@ -1,4 +1,5 @@
 #include "../native_textbox.h"
+#include "win32_text_style.h"
 
 #include <windows.h>
 
@@ -8,6 +9,7 @@ public:
         if (edit_) {
             DestroyWindow(edit_);
         }
+        if (font_) DeleteObject(font_);
     }
 
     void attach(
@@ -55,6 +57,7 @@ public:
         ));
 
         showPlaceholder();
+        setTextStyle(style_);
     }
 
     void setBounds(int x, int y, int width, int height) override {
@@ -94,6 +97,14 @@ public:
 
         if (GetFocus() == edit_) hidePlaceholder();
         else showPlaceholder();
+    }
+
+    void setTextStyle(const TextStyle& style) override {
+        style_ = style;
+        if (!edit_) return;
+        if (font_) DeleteObject(font_);
+        font_ = createWin32Font(style_);
+        SendMessageW(edit_, WM_SETFONT, reinterpret_cast<WPARAM>(font_), TRUE);
     }
 
 private:
@@ -154,6 +165,8 @@ private:
     std::wstring text_;
     std::wstring placeholder_;
     bool showingPlaceholder_ = false;
+    TextStyle style_;
+    HFONT font_ = nullptr;
 };
 
 std::unique_ptr<NativeTextBox> createNativeTextBox() {

@@ -1,4 +1,6 @@
 #pragma once
+#include "../platform/platform_types.h"
+
 class DrawContext;
 
 enum class CursorType {
@@ -23,6 +25,10 @@ public:
     int y() const { return y_; }
     int width() const { return width_; }
     int height() const { return height_; }
+    void setFont(FontFamily family);
+    void setFontSize(int size);
+    void setTextStyle(TextStyle style);
+    TextStyle textStyle() const { return textStyle_; }
     
     bool containsPoint(int x, int y) const;
 
@@ -36,4 +42,5 @@ protected:
     int y_ = 0;
     int width_ = 100;
     int height_ = 30;
+    TextStyle textStyle_;
 };

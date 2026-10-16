@@ -21,7 +21,7 @@ struct AppOptions {
     /**The height of the window */
     int height = 600;
     /**Path to your app icon*/
-    std::wstring iconPath = L"window\\pixelate.ico";
+    std::wstring iconPath = L"pixelate.ico";
     /**Window background color, with channels from 0 to 255*/
     AppColor backgroundColor{};
     CloseTrigger closeTrigger{};

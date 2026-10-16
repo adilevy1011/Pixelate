@@ -5,12 +5,28 @@
 #include <unordered_set>
 #include <utility>
 
+namespace {
+
+bool isFontConstant(const std::string& value) {
+    static const std::unordered_set<std::string> fonts = {
+        "DEFAULT", "ARIAL", "CALIBRI", "CONSOLAS", "COURIERNEW",
+        "TIMESNEWROMAN", "TAHOMA", "VERDANA"
+    };
+    return fonts.find(value) != fonts.end();
+}
+
+}
+
 Parser::Parser(std::vector<Token> tokens)
     : tokens_(std::move(tokens)) {
 }
 
 const Token& Parser::current() const {
     return tokens_.at(position_);
+}
+
+int Parser::currentLine() const {
+    return current().line;
 }
 
 const Token& Parser::peek(std::size_t offset) const {
@@ -192,14 +208,18 @@ WindowNode Parser::parseWindowBlock() {
                 );
             }
             consumeFieldSeparator("Expected ',' after background.");
-        } else if (token.text == "label" || token.text == "button" ||
-                   token.text == "textbox") {
+        } else if (token.text == "label" || token.text == "par" || token.text == "button" ||
+                   token.text == "textbox" || token.text == "textarea") {
             Token id = consume(TokenKind::Identifier, "Expected element id.");
             ElementType type = token.text == "label"
                 ? ElementType::Label
+                : token.text == "par"
+                    ? ElementType::Paragraph
                 : token.text == "button"
                     ? ElementType::Button
-                    : ElementType::TextBox;
+                    : token.text == "textbox"
+                        ? ElementType::TextBox
+                        : ElementType::TextArea;
 
             ElementNode element = parseElement(type);
             element.id = id.text;
@@ -222,25 +242,29 @@ void Parser::parseScriptBlock(ProgramNode& program) {
         if (command.text == "add") {
             Token type = consume(
                 TokenKind::Identifier,
-                "Expected label, button, textbox, or CLOSE_TRIGGER after add."
+                "Expected label, par, button, textbox, textarea, or CLOSE_TRIGGER after add."
             );
 
             if (type.text == "CLOSE_TRIGGER") {
                 parseCloseTrigger(program);
-            } else if (type.text == "label" || type.text == "button" ||
-                       type.text == "textbox") {
+            } else if (type.text == "label" || type.text == "par" || type.text == "button" ||
+                       type.text == "textbox" || type.text == "textarea") {
                 ElementType elementType = type.text == "label"
                     ? ElementType::Label
+                    : type.text == "par"
+                        ? ElementType::Paragraph
                     : type.text == "button"
                         ? ElementType::Button
-                        : ElementType::TextBox;
+                        : type.text == "textbox"
+                            ? ElementType::TextBox
+                            : ElementType::TextArea;
                 Token id = consume(TokenKind::Identifier, "Expected element id.");
                 ElementNode element = parseElement(elementType);
                 element.id = id.text;
                 program.elements.push_back(std::move(element));
             } else {
                 throw std::runtime_error(
-                    "Only label, button, textbox, and CLOSE_TRIGGER can be added."
+                    "Only label, par, button, textbox, textarea, and CLOSE_TRIGGER can be added."
                 );
             }
         } else if (
@@ -392,20 +416,27 @@ void Parser::parseCloseTrigger(ProgramNode& program) {
 void Parser::parseElementIntoProgram(ProgramNode& program) {
     Token typeToken = consume(
         TokenKind::Identifier,
-        "Expected label, button, or textbox after add."
+        "Expected label, par, button, textbox, or textarea after add."
     );
 
-    if (typeToken.text != "label" && typeToken.text != "button" &&
-        typeToken.text != "textbox") {
-        throw std::runtime_error("Only label, button, and textbox can be added.");
+    if (typeToken.text != "label" && typeToken.text != "par" &&
+        typeToken.text != "button" &&
+        typeToken.text != "textbox" && typeToken.text != "textarea") {
+        throw std::runtime_error(
+            "Only label, par, button, textbox, and textarea can be added."
+        );
     }
 
     Token id = consume(TokenKind::Identifier, "Expected element id.");
     ElementType type = typeToken.text == "label"
         ? ElementType::Label
+        : typeToken.text == "par"
+            ? ElementType::Paragraph
         : typeToken.text == "button"
             ? ElementType::Button
-            : ElementType::TextBox;
+            : typeToken.text == "textbox"
+                ? ElementType::TextBox
+                : ElementType::TextArea;
 
     ElementNode element = parseElement(type);
     element.id = id.text;
@@ -433,9 +464,10 @@ void Parser::parseElementProperty(ElementNode& element) {
         element.text = parseTextValue();
         consumeFieldSeparator("Expected ',' after text.");
     } else if (property.text == "placeholder") {
-        if (element.type != ElementType::TextBox) {
+        if (element.type != ElementType::TextBox &&
+            element.type != ElementType::TextArea) {
             throw std::runtime_error(
-                "Only textbox elements can use placeholder."
+                "Only textbox and textarea elements can use placeholder."
             );
         }
         consume(TokenKind::Colon, "Expected ':' after placeholder.");
@@ -457,6 +489,20 @@ void Parser::parseElementProperty(ElementNode& element) {
         consume(TokenKind::Colon, "Expected ':' after height.");
         element.height = consumeNumber("Expected element height.");
         consumeFieldSeparator("Expected ',' after height.");
+    } else if (property.text == "font") {
+        consume(TokenKind::Colon, "Expected ':' after font.");
+        element.font = consume(TokenKind::Identifier, "Expected font constant.").text;
+        if (!isFontConstant(element.font)) {
+            throw std::runtime_error("Unknown font constant.");
+        }
+        consumeFieldSeparator("Expected ',' after font.");
+    } else if (property.text == "fontSize") {
+        consume(TokenKind::Colon, "Expected ':' after fontSize.");
+        element.fontSize = consumeNumber("Expected font size.");
+        if (element.fontSize <= 0) {
+            throw std::runtime_error("Font size must be greater than zero.");
+        }
+        consumeFieldSeparator("Expected ',' after fontSize.");
     } else if (property.text == "onclick") {
         element.onClick = parseClickAction();
         consumeFieldSeparator("Expected ',' after onclick.");
@@ -534,7 +580,17 @@ UpdateAction Parser::parseObjectProperty(const std::string& targetId) {
         action.value = color;
     } else if (action.property == "x" || action.property == "y" ||
                action.property == "width" || action.property == "height") {
-        action.value = consumeNumber("Expected numeric property value.");
+        action.value = parseValueExpression();
+    } else if (action.property == "fontSize") {
+        action.value = parseValueExpression();
+    } else if (action.property == "font") {
+        action.value = consume(
+            TokenKind::Identifier,
+            "Expected font constant."
+        ).text;
+        if (!isFontConstant(std::get<std::string>(action.value))) {
+            throw std::runtime_error("Unknown font constant.");
+        }
     } else if (targetId == "mouse" && action.property == "shape") {
         action.value = consume(
             TokenKind::Identifier,
@@ -606,7 +662,17 @@ UpdateAction Parser::parsePropertyAssignment() {
         action.value = color;
     } else if (action.property == "x" || action.property == "y" ||
                action.property == "width" || action.property == "height") {
-        action.value = consumeNumber("Expected numeric property value.");
+        action.value = parseValueExpression();
+    } else if (action.property == "fontSize") {
+        action.value = parseValueExpression();
+    } else if (action.property == "font") {
+        action.value = consume(
+            TokenKind::Identifier,
+            "Expected font constant."
+        ).text;
+        if (!isFontConstant(std::get<std::string>(action.value))) {
+            throw std::runtime_error("Unknown font constant.");
+        }
     } else {
         auto text = parseTextValue();
         if (std::holds_alternative<UpdateAction::TextTemplate>(text)) {
@@ -634,35 +700,40 @@ std::variant<std::string, UpdateAction::TextTemplate> Parser::parseTextValue() {
 
 std::shared_ptr<Statement> Parser::parseStatement() {
     Token command = consume(TokenKind::Identifier, "Expected statement.");
+    const int line = command.line;
+    auto stamp = [line](std::shared_ptr<Statement> statement) {
+        statement->line = line;
+        return statement;
+    };
 
     if (command.text == "update") {
         --position_;
-        return parseUpdateStatement();
+        return stamp(parseUpdateStatement());
     }
 
     if (command.text == "switch_view") {
         --position_;
-        return parseSwitchViewStatement();
+        return stamp(parseSwitchViewStatement());
     }
 
     if (command.text == "trigger") {
         --position_;
-        return parseTriggerStatement();
+        return stamp(parseTriggerStatement());
     }
 
     if (command.text == "if") {
         --position_;
-        return parseIfStatement();
+        return stamp(parseIfStatement());
     }
 
     if (command.text == "while") {
         --position_;
-        return parseWhileStatement();
+        return stamp(parseWhileStatement());
     }
 
     if (command.text == "for") {
         --position_;
-        return parseForStatement();
+        return stamp(parseForStatement());
     }
 
     if (command.text == "int" || command.text == "short" ||
@@ -671,24 +742,30 @@ std::shared_ptr<Statement> Parser::parseStatement() {
         command.text == "char" || command.text == "String") {
         auto statement = std::make_shared<Statement>();
         statement->value = parseVariableDeclaration(command.text);
-        return statement;
+        return stamp(statement);
     }
 
-    if (current().kind == TokenKind::Increment) {
+    if (current().kind == TokenKind::Increment ||
+        current().kind == TokenKind::Decrement) {
         --position_;
-        return parseIncrementStatement();
+        return stamp(parseIncrementStatement());
     }
 
     if (current().kind == TokenKind::Equals) {
         --position_;
-        return parseVariableAssignment();
+        return stamp(parseVariableAssignment());
     }
 
     if (current().kind == TokenKind::Dot) {
+        if (peek(2).kind == TokenKind::Increment ||
+            peek(2).kind == TokenKind::Decrement) {
+            --position_;
+            return stamp(parseIncrementStatement());
+        }
         --position_;
         auto statement = std::make_shared<Statement>();
         statement->value = parsePropertyAssignment();
-        return statement;
+        return stamp(statement);
     }
 
     throw std::runtime_error("Unknown statement.");
@@ -749,44 +826,47 @@ std::vector<std::shared_ptr<Statement>> Parser::parseStatementBlock(
 }
 
 ValueExpression Parser::parseValueExpression() {
+    ValueExpression expression;
+
     if (current().kind == TokenKind::String) {
-        ValueExpression expression;
         expression.literal = consume(TokenKind::String, "Expected value.").text;
-        return expression;
-    }
-
-    if (current().kind == TokenKind::Character) {
-        ValueExpression expression;
+    } else if (current().kind == TokenKind::Character) {
         expression.literal = consume(TokenKind::Character, "Expected value.").text[0];
-        return expression;
-    }
-
-    if (current().kind == TokenKind::Number) {
+    } else if (current().kind == TokenKind::Number) {
         std::string value = consume(TokenKind::Number, "Expected value.").text;
-        ValueExpression expression;
-
         if (value.find('.') == std::string::npos) {
             expression.literal = std::stoi(value);
         } else {
             expression.literal = std::stod(value);
         }
 
-        return expression;
+    } else {
+        std::string name = consume(TokenKind::Identifier, "Expected value.").text;
+
+        if (match(TokenKind::Dot)) {
+            name += "." + consume(
+                TokenKind::Identifier,
+                "Expected property after '.'."
+            ).text;
+        }
+
+        if (name == "true") expression.literal = true;
+        else if (name == "false") expression.literal = false;
+        else if (isFontConstant(name)) expression.literal = name;
+        else expression.variable = name;
     }
 
-    std::string name = consume(TokenKind::Identifier, "Expected value.").text;
-    ValueExpression expression;
-
-    if (match(TokenKind::Dot)) {
-        name += "." + consume(
-            TokenKind::Identifier,
-            "Expected property after '.'."
-        ).text;
+    if (current().kind == TokenKind::Plus ||
+        current().kind == TokenKind::Minus) {
+        auto arithmetic = std::make_shared<ArithmeticExpression>();
+        arithmetic->left = expression;
+        arithmetic->operation = current().kind == TokenKind::Plus ? '+' : '-';
+        ++position_;
+        arithmetic->right = parseValueExpression();
+        expression.literal.reset();
+        expression.variable.clear();
+        expression.arithmetic = std::move(arithmetic);
     }
-
-    if (name == "true") expression.literal = true;
-    else if (name == "false") expression.literal = false;
-    else expression.variable = name;
 
     return expression;
 }
@@ -892,15 +972,32 @@ std::shared_ptr<Statement> Parser::parseForStatement() {
 }
 
 std::shared_ptr<Statement> Parser::parseIncrementStatement() {
-    std::string name = consume(
+    std::string target = consume(
         TokenKind::Identifier,
-        "Expected variable before '++'."
+        "Expected variable or widget property before '++'."
     ).text;
-    consume(TokenKind::Increment, "Expected '++'.");
+
+    std::string property;
+    if (match(TokenKind::Dot)) {
+        property = consume(
+            TokenKind::Identifier,
+            "Expected numeric property before '++'."
+        ).text;
+        if (property != "fontSize") {
+            throw std::runtime_error(
+                "Only fontSize can be incremented on widgets."
+            );
+        }
+    }
+
+    const bool decrement = match(TokenKind::Decrement);
+    if (!decrement) {
+        consume(TokenKind::Increment, "Expected '++' or '--'.");
+    }
     consume(TokenKind::Semicolon, "Expected ';' after increment.");
 
     auto statement = std::make_shared<Statement>();
-    statement->value = IncrementStatement{name};
+    statement->value = IncrementStatement{target, property, decrement};
     return statement;
 }
 

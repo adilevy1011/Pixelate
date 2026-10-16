@@ -10,7 +10,14 @@
 ProgramNode Interpreter::parseSource(const std::string& source) const {
     Lexer lexer(source);
     Parser parser(lexer.tokenize());
-    return parser.parse();
+    try {
+        return parser.parse();
+    } catch (const std::exception& exception) {
+        throw std::runtime_error(
+            "Line " + std::to_string(parser.currentLine()) + ": " +
+            exception.what()
+        );
+    }
 }
 
 ProgramNode Interpreter::parseFile(const std::string& path) const {

@@ -10,10 +10,10 @@ These parts should remain reusable across Windows, macOS, and Linux:
 - `runtime/` — executes PXL programs.
 - `language/` — lexer, parser, AST, and interpreter.
 - `window/ui/widget.h` — widget geometry, hit testing, and widget behavior.
-- `window/ui/label.*`, `window/ui/button.*`, and `window/ui/textbox.*` — public widget implementations.
+- `window/ui/label.*`, `window/ui/paragraph.*`, `window/ui/button.*`, `window/ui/textbox.*`, and `window/ui/textarea.*` — public widget implementations.
 - `window/ui/draw_context.h` — abstract drawing operations used by widgets.
 - `window/platform/platform_types.h` — platform-neutral colors, cursor names, and window options.
-- `window/platform/native_textbox.h` — the platform-neutral editable textbox contract.
+- `window/platform/native_textbox.h` — the platform-neutral editable textbox and textarea contracts.
 
 The generic widgets do not need to know whether they are running on Win32,
 Cocoa, or X11/Wayland.
@@ -23,7 +23,8 @@ Cocoa, or X11/Wayland.
 Windows-specific code is under `window/platform/windows/`:
 
 - `win32_draw_context.*` implements drawing with GDI.
-- `win32_native_textbox.cpp` implements the native editable Windows textbox.
+- `win32_native_textbox.cpp` and `win32_native_textarea.cpp` implement native editable Windows controls.
+- `platform_types.h` contains shared widget text style and font-family values.
 - `window/app.cpp` currently contains the Win32 window/event-loop adapter.
 
 The `App` public API remains unchanged, so the runtime and PXL programs do not

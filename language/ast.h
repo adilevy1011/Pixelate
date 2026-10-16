@@ -8,8 +8,10 @@
 
 enum class ElementType {
     Label,
+    Paragraph,
     Button,
-    TextBox
+    TextBox,
+    TextArea
 };
 
 enum class VariableType {
@@ -40,9 +42,18 @@ struct VariableDeclaration {
     VariableValue value;
 };
 
+struct ArithmeticExpression;
+
 struct ValueExpression {
     std::optional<VariableValue> literal;
     std::string variable;
+    std::shared_ptr<ArithmeticExpression> arithmetic;
+};
+
+struct ArithmeticExpression {
+    ValueExpression left;
+    ValueExpression right;
+    char operation = '+';
 };
 
 struct VariableAssignment {
@@ -79,7 +90,7 @@ struct UpdateAction {
     struct TextTemplate {
         std::string text;
     };
-    std::variant<int, std::string, ColorNode, TextTemplate> value;
+    std::variant<int, std::string, ColorNode, TextTemplate, ValueExpression> value;
 };
 
 struct UpdateBlock {
@@ -108,7 +119,9 @@ struct ForStatement {
 };
 
 struct IncrementStatement {
-    std::string variable;
+    std::string target;
+    std::string property;
+    bool decrement = false;
 };
 
 struct SwitchViewStatement {
@@ -135,6 +148,7 @@ struct Statement {
         std::shared_ptr<ForStatement>,
         std::shared_ptr<TriggerStatement>
     > value;
+    int line = 0;
 };
 
 struct CloseTriggerNode {
@@ -147,6 +161,8 @@ struct ElementNode {
     std::string id;
     std::variant<std::string, UpdateAction::TextTemplate> text;
     std::string placeholder;
+    std::string font = "DEFAULT";
+    int fontSize = 16;
     int x = 0;
     int y = 0;
     int width = 100;
@@ -159,7 +175,7 @@ struct WindowNode {
     std::string title = "Pixelate App";
     int width = 800;
     int height = 600;
-    std::string iconPath = "window\\pixelate.ico";
+    std::string iconPath = "pixelate.ico";
     ColorNode background;
     std::optional<CloseTriggerNode> closeTrigger;
     std::vector<ElementNode> elements;
@@ -169,7 +185,7 @@ struct ProgramNode {
     std::string title = "Pixelate App";
     int width = 800;
     int height = 600;
-    std::string iconPath = "window\\pixelate.ico";
+    std::string iconPath = "pixelate.ico";
     ColorNode background;
     std::optional<CloseTriggerNode> closeTrigger;
     std::vector<VariableDeclaration> variables;

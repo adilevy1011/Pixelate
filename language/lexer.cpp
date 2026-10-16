@@ -76,7 +76,37 @@ std::vector<Token> Lexer::tokenize() const {
             continue;
         }
 
-        if (std::isdigit(static_cast<unsigned char>(current)) || current == '-') {
+        if (current == '-' && index + 1 < source_.size() &&
+            source_[index + 1] == '-') {
+            advance();
+            advance();
+            tokens.push_back({
+                TokenKind::Decrement,
+                "--",
+                tokenLine,
+                tokenColumn
+            });
+            continue;
+        }
+
+        const bool unaryMinus = current == '-' &&
+            index + 1 < source_.size() &&
+            std::isdigit(static_cast<unsigned char>(source_[index + 1])) &&
+            (tokens.empty() ||
+             tokens.back().kind == TokenKind::Equals ||
+             tokens.back().kind == TokenKind::OpenParen ||
+             tokens.back().kind == TokenKind::Comma ||
+             tokens.back().kind == TokenKind::Colon ||
+             tokens.back().kind == TokenKind::Plus ||
+             tokens.back().kind == TokenKind::Minus ||
+             tokens.back().kind == TokenKind::EqualEqual ||
+             tokens.back().kind == TokenKind::NotEqual ||
+             tokens.back().kind == TokenKind::Less ||
+             tokens.back().kind == TokenKind::LessEqual ||
+             tokens.back().kind == TokenKind::Greater ||
+             tokens.back().kind == TokenKind::GreaterEqual);
+
+        if (std::isdigit(static_cast<unsigned char>(current)) || unaryMinus) {
             std::string value;
 
             if (current == '-') {
@@ -242,12 +272,14 @@ std::vector<Token> Lexer::tokenize() const {
                 }
                 break;
             case '+':
-                if (index + 1 >= source_.size() || source_[index + 1] != '+') {
-                    throw std::runtime_error("Expected '++'.");
+                if (index + 1 < source_.size() && source_[index + 1] == '+') {
+                    kind = TokenKind::Increment;
+                    advance();
+                } else {
+                    kind = TokenKind::Plus;
                 }
-                kind = TokenKind::Increment;
-                advance();
                 break;
+            case '-': kind = TokenKind::Minus; break;
             case '(': kind = TokenKind::OpenParen; break;
             case ')': kind = TokenKind::CloseParen; break;
             case ';': kind = TokenKind::Semicolon; break;

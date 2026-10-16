@@ -21,7 +21,7 @@ void Button::draw(DrawContext& context) {
         width_,
         height_
     );
-    context.drawText(text_, x_, y_, width_,height_);
+    context.drawText(text_, x_, y_, width_, height_, textStyle_);
 
 }
 

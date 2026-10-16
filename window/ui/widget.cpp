@@ -11,6 +11,21 @@ void Widget::setSize(int width, int height){
     syncNativeControl();
 }
 
+void Widget::setFont(FontFamily family) {
+    textStyle_.family = family;
+    syncNativeControl();
+}
+
+void Widget::setFontSize(int size) {
+    textStyle_.size = size;
+    syncNativeControl();
+}
+
+void Widget::setTextStyle(TextStyle style) {
+    textStyle_ = style;
+    syncNativeControl();
+}
+
 bool Widget::containsPoint(int x, int y) const {
     return x >= x_
         && x <= x_ + width_

@@ -9,6 +9,7 @@ class Parser {
 public:
     explicit Parser(std::vector<Token> tokens);
     ProgramNode parse();
+    int currentLine() const;
 
 private:
     const Token& current() const;

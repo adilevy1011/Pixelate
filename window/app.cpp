@@ -220,6 +220,48 @@ static HCURSOR loadMouseCursor(MouseShape shape) {
     return LoadCursorW(nullptr, MAKEINTRESOURCEW(resource));
 }
 
+static bool fileExists(const std::wstring& path) {
+    const DWORD attributes = GetFileAttributesW(path.c_str());
+    return attributes != INVALID_FILE_ATTRIBUTES &&
+        !(attributes & FILE_ATTRIBUTE_DIRECTORY);
+}
+
+static std::wstring executableDirectory() {
+    std::wstring path(32768, L'\0');
+    const DWORD length = GetModuleFileNameW(
+        nullptr,
+        path.data(),
+        static_cast<DWORD>(path.size())
+    );
+
+    if (length == 0 || length >= path.size()) return {};
+    path.resize(length);
+
+    const std::size_t separator = path.find_last_of(L"\\/");
+    return separator == std::wstring::npos
+        ? std::wstring{}
+        : path.substr(0, separator);
+}
+
+static std::wstring resolveIconPath(const std::wstring& requestedPath) {
+    if (fileExists(requestedPath)) return requestedPath;
+
+    const std::wstring directory = executableDirectory();
+    if (directory.empty()) return requestedPath;
+
+    const std::wstring besideExecutable = directory + L"\\" + requestedPath;
+    if (fileExists(besideExecutable)) return besideExecutable;
+
+    // Preserve compatibility with the old default path when the icon was
+    // moved from window\pixelate.ico to the executable directory.
+    if (requestedPath == L"window\\pixelate.ico") {
+        const std::wstring fallback = directory + L"\\pixelate.ico";
+        if (fileExists(fallback)) return fallback;
+    }
+
+    return requestedPath;
+}
+
 bool App::Impl::create() {
     WNDCLASSEXW windowClass{};
 
@@ -231,10 +273,11 @@ bool App::Impl::create() {
         nullptr,
         MAKEINTRESOURCEW(32512)
     );
+    const std::wstring iconPath = resolveIconPath(options.iconPath);
     windowClass.hIcon = static_cast<HICON>(
         LoadImageW(
             nullptr,
-            options.iconPath.c_str(),
+            iconPath.c_str(),
             IMAGE_ICON,
             0,
             0,
@@ -244,7 +287,7 @@ bool App::Impl::create() {
     windowClass.hIconSm = static_cast<HICON>(
         LoadImageW(
             nullptr,
-            options.iconPath.c_str(),
+            iconPath.c_str(),
             IMAGE_ICON,
             16,
             16,

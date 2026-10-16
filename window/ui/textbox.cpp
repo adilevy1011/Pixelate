@@ -21,6 +21,7 @@ void TextBox::attachToWindow(void* parent) {
         height_
     );
     nativeControl_->setPlaceholder(placeholder_);
+    nativeControl_->setTextStyle(textStyle_);
 }
 
 void TextBox::draw(DrawContext&) {
@@ -43,4 +44,5 @@ void TextBox::setPlaceholder(std::wstring placeholder) {
 
 void TextBox::syncNativeControl() {
     nativeControl_->setBounds(x_, y_, width_, height_);
+    nativeControl_->setTextStyle(textStyle_);
 }

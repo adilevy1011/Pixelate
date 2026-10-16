@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <exception>
 
 class App;
 class Label;
@@ -30,13 +31,19 @@ private:
     bool evaluateCondition(const Condition& condition) const;
     void executeStatements(const std::vector<std::shared_ptr<Statement>>& statements);
     void executeStatement(const Statement& statement);
-    void incrementVariable(const std::string& name);
+    void incrementVariable(const std::string& name, bool decrement = false);
+    void incrementWidgetProperty(
+        const std::string& target,
+        const std::string& property,
+        bool decrement = false
+    );
     void applyUpdateAction(const UpdateAction& action);
     std::string renderText(const UpdateAction::TextTemplate& text) const;
     void checkTriggers();
     void fireMouseMoveTriggers();
     void switchView(const SwitchViewStatement& statement);
     void configureView(RuntimeView& view, const WindowNode& window);
+    void reportRuntimeError(const std::exception& exception) const;
 
     App* app_ = nullptr;
     std::vector<std::unique_ptr<RuntimeView>> views_;
@@ -46,4 +53,5 @@ private:
     std::vector<std::shared_ptr<Statement>> statements_;
     std::vector<std::shared_ptr<TriggerStatement>> triggers_;
     std::vector<bool> triggerStates_;
+    int currentLine_ = 0;
 };

@@ -16,7 +16,16 @@ public:
         int x,
         int y,
         int width,
-        int height
+        int height,
+        const TextStyle& style
+    ) override;
+    void drawParagraph(
+        const std::wstring& text,
+        int x,
+        int y,
+        int width,
+        int height,
+        const TextStyle& style
     ) override;
 
 private:

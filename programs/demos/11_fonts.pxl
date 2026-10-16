@@ -1,0 +1,87 @@
+window {
+    title: "Fonts demo",
+
+    label greeting {
+        text: "Hey you!",
+        x:30,
+        y:50,
+        font: DEFAULT,
+        fontSize: 20
+    }
+
+    button changeToArial {
+        text: "Change the to Arial",
+        fontSize: 15,
+        x: 300,
+        y: 50,
+        width: 200,
+        height:30,
+        onclick{
+            greeting.font = ARIAL;
+        }
+    }
+    button changeToCALIBRI {
+        text: "Change the to CALIBRI",
+        fontSize: 15,
+        x: 300,
+        y: 150,
+        width: 200,
+        height:30,
+        onclick{
+            greeting.font = CALIBRI;
+        }
+    }
+    button changeToCONSOLAS {
+        text: "Change the to CONSOLAS",
+        fontSize: 15,
+        x: 300,
+        y: 250,
+        width: 200,
+        height:30,
+        onclick{
+            greeting.font = CONSOLAS;
+        }
+    }
+    button changeToCOURIERNEW {
+        text: "Change the to COURIERNEW",
+        fontSize: 15,
+        x: 300,
+        y: 350,
+        width: 200,
+        height:30,
+        onclick{
+            greeting.font = COURIERNEW;
+        }
+    }
+
+    label changeSize {
+        text: "Change the greeting size:",
+        x: 50,
+        y: 500,
+        width: 120,
+        fontSize: 12,
+
+    }
+    button IncreaseSize {
+        text: "Increase",
+        x: 170,
+        y: 500,
+        fontSize: 12,
+        onclick {
+            greeting.fontSize++;
+            greeting.width = greeting.width + 5;
+            greeting.height = greeting.height + 1;
+        }
+    }
+    button DecreaseSize {
+        text: "Decrease",
+        x: 270,
+        y: 500,
+        fontSize: 12,
+        onclick {
+            greeting.fontSize--;
+            greeting.width = greeting.width - 5;
+            greeting.height = greeting.height - 1;
+        }
+    }
+}

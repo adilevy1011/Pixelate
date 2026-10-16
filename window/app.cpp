@@ -10,6 +10,7 @@ struct App::Impl {
     HINSTANCE hInstance{};
     HWND hwnd{};
     HBRUSH backgroundBrush{};
+    bool suppressQuitOnDestroy = false;
     MouseShape mouseShape = MouseShape::Arrow;
     bool mouseShapeConfigured = false;
     MouseMoveHandler mouseMoveHandler;
@@ -25,6 +26,7 @@ struct App::Impl {
     MousePosition mousePosition() const;
     void setOnMouseMove(MouseMoveHandler handler);
     void setOnTick(TickHandler handler);
+    void close(bool quitMessage);
 
     static LRESULT CALLBACK WindowProc(
         HWND hwnd,
@@ -101,6 +103,23 @@ void App::setOnTick(TickHandler handler) {
     impl_->setOnTick(std::move(handler));
 }
 
+void App::close(bool quitMessage) {
+    impl_->close(quitMessage);
+}
+
+void App::setVisible(bool visible) {
+    if (impl_->hwnd) {
+        ShowWindow(impl_->hwnd, visible ? SW_SHOW : SW_HIDE);
+        if (visible) {
+            SetForegroundWindow(impl_->hwnd);
+        }
+    }
+}
+
+bool App::isCreated() const {
+    return impl_->hwnd != nullptr;
+}
+
 void App::Impl::setTitle(const std::wstring& title) {
     options.title = title;
 
@@ -164,6 +183,14 @@ void App::Impl::setOnMouseMove(MouseMoveHandler handler) {
 
 void App::Impl::setOnTick(TickHandler handler) {
     tickHandler = std::move(handler);
+}
+
+void App::Impl::close(bool quitMessage) {
+    if (hwnd) {
+        suppressQuitOnDestroy = !quitMessage;
+        DestroyWindow(hwnd);
+        hwnd = nullptr;
+    }
 }
 
 static HCURSOR loadMouseCursor(MouseShape shape) {
@@ -241,10 +268,12 @@ bool App::Impl::create() {
         return false;
     }
 
-    windowClass.hbrBackground = backgroundBrush;
+    windowClass.hbrBackground = nullptr;
     windowClass.lpszClassName = L"Pixelate";
 
-    if (!RegisterClassExW(&windowClass)) {
+    WNDCLASSEXW existingClass{};
+    if (!GetClassInfoExW(hInstance, L"Pixelate", &existingClass) &&
+        !RegisterClassExW(&windowClass)) {
         MessageBoxW(
             nullptr,
             L"Window registration failed.",
@@ -502,7 +531,9 @@ LRESULT App::Impl::handleMessage(
             return 0;
 
         case WM_DESTROY:
-            PostQuitMessage(0);
+            if (!suppressQuitOnDestroy) {
+                PostQuitMessage(0);
+            }
             return 0;
     }
 

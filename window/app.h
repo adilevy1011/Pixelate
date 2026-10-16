@@ -87,6 +87,9 @@ public:
     MousePosition mousePosition() const;
     void setOnMouseMove(MouseMoveHandler handler);
     void setOnTick(TickHandler handler);
+    void close(bool quitMessage = true);
+    void setVisible(bool visible);
+    bool isCreated() const;
 
 private:
     struct Impl;

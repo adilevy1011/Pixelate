@@ -16,6 +16,32 @@ script {
 
 Comments begin with #.
 
+## Multiple windows
+
+A single window may omit its id. If a file contains multiple windows, every
+window must have a unique string id. The window with id `main` is selected
+first; otherwise the first window is selected.
+
+~~~pxl
+window {
+    id: "main";
+    title: "Main";
+}
+
+window {
+    id: "settings";
+    title: "Settings";
+}
+~~~
+
+Switch views from a script or button action. By default the old window is
+destroyed:
+
+~~~pxl
+switch_view("settings");
+switch_view("main", destroy_window = false);
+~~~
+
 ## Variables
 
 Supported types are int, short, long, float, double, bool, char, and String.

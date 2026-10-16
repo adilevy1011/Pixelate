@@ -22,6 +22,7 @@ enum class TokenKind {
     OpenParen,
     CloseParen,
     Semicolon,
+    Comma,
     OpenBrace,
     CloseBrace,
     End

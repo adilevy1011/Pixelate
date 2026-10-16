@@ -251,6 +251,7 @@ std::vector<Token> Lexer::tokenize() const {
             case '(': kind = TokenKind::OpenParen; break;
             case ')': kind = TokenKind::CloseParen; break;
             case ';': kind = TokenKind::Semicolon; break;
+            case ',': kind = TokenKind::Comma; break;
             case '{': kind = TokenKind::OpenBrace; break;
             case '}': kind = TokenKind::CloseBrace; break;
             default:

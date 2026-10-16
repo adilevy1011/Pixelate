@@ -21,7 +21,7 @@ private:
     int consumeNumber(const char* message);
 
     ElementNode parseElement(ElementType type);
-    void parseWindowBlock(ProgramNode& program);
+    WindowNode parseWindowBlock();
     void parseScriptBlock(ProgramNode& program);
     void parseElementIntoProgram(ProgramNode& program);
     void parseCloseTrigger(ProgramNode& program);
@@ -40,6 +40,7 @@ private:
     std::shared_ptr<Statement> parseForStatement();
     std::shared_ptr<Statement> parseIncrementStatement();
     std::shared_ptr<Statement> parseVariableAssignment();
+    std::shared_ptr<Statement> parseSwitchViewStatement();
     std::shared_ptr<Statement> parseTriggerStatement();
     UpdateAction parsePropertyAssignment();
     std::shared_ptr<Statement> parseUpdateStatement();

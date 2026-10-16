@@ -111,6 +111,11 @@ struct IncrementStatement {
     std::string variable;
 };
 
+struct SwitchViewStatement {
+    std::string windowId;
+    bool destroyWindow = true;
+};
+
 struct TriggerStatement {
     bool mouseMove = false;
     std::optional<Condition> condition;
@@ -124,6 +129,7 @@ struct Statement {
         UpdateAction,
         UpdateBlock,
         IncrementStatement,
+        SwitchViewStatement,
         std::shared_ptr<IfStatement>,
         std::shared_ptr<WhileStatement>,
         std::shared_ptr<ForStatement>,
@@ -148,6 +154,17 @@ struct ElementNode {
     std::optional<std::vector<std::shared_ptr<Statement>>> onClick;
 };
 
+struct WindowNode {
+    std::string id;
+    std::string title = "Pixelate App";
+    int width = 800;
+    int height = 600;
+    std::string iconPath = "window\\pixelate.ico";
+    ColorNode background;
+    std::optional<CloseTriggerNode> closeTrigger;
+    std::vector<ElementNode> elements;
+};
+
 struct ProgramNode {
     std::string title = "Pixelate App";
     int width = 800;
@@ -159,4 +176,5 @@ struct ProgramNode {
     std::vector<std::shared_ptr<Statement>> statements;
     std::vector<std::shared_ptr<TriggerStatement>> triggers;
     std::vector<ElementNode> elements;
+    std::vector<WindowNode> windows;
 };

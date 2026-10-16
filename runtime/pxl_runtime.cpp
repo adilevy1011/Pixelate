@@ -7,6 +7,7 @@
 #include "../window/ui/textbox.h"
 
 #include <exception>
+#include <algorithm>
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
@@ -321,6 +322,12 @@ void PxlRuntime::executeStatement(const Statement& statement) {
         return;
     }
 
+    if (const auto* switchStatement = std::get_if<SwitchViewStatement>(
+            &statement.value)) {
+        switchView(*switchStatement);
+        return;
+    }
+
     if (const auto* ifStatement = std::get_if<std::shared_ptr<IfStatement>>(
             &statement.value)) {
         if (evaluateCondition((*ifStatement)->condition)) {
@@ -367,6 +374,133 @@ void PxlRuntime::executeStatements(
 PxlRuntime::PxlRuntime() = default;
 PxlRuntime::~PxlRuntime() = default;
 
+void PxlRuntime::configureView(
+    RuntimeView& view,
+    const WindowNode& window
+) {
+    AppOptions options;
+    options.title = widen(window.title);
+    options.width = window.width;
+    options.height = window.height;
+    options.iconPath = widen(window.iconPath);
+    options.backgroundColor = {
+        window.background.red,
+        window.background.green,
+        window.background.blue
+    };
+
+    if (window.closeTrigger) {
+        options.closeTrigger.enabled = true;
+        options.closeTrigger.message = widen(
+            window.closeTrigger->message
+        );
+        options.closeTrigger.option = CloseDialogOption::YesNo;
+    }
+
+    view.id = window.id;
+    view.app = std::make_unique<App>(options);
+    view.elements.clear();
+
+    activeView_ = &view;
+    app_ = view.app.get();
+    elements_.clear();
+
+    for (const ElementNode& node : window.elements) {
+        std::string elementText;
+        if (const auto* plainText = std::get_if<std::string>(&node.text)) {
+            elementText = *plainText;
+        } else {
+            elementText = renderText(
+                std::get<UpdateAction::TextTemplate>(node.text)
+            );
+        }
+
+        if (node.type == ElementType::Label) {
+            auto label = std::make_unique<Label>(widen(elementText));
+            label->setPosition(node.x, node.y);
+            label->setSize(node.width, node.height);
+            elements_[node.id] = label.get();
+            view.app->add(std::move(label));
+            continue;
+        }
+
+        if (node.type == ElementType::TextBox) {
+            auto textBox = std::make_unique<TextBox>(widen(elementText));
+            textBox->setPlaceholder(widen(node.placeholder));
+            textBox->setPosition(node.x, node.y);
+            textBox->setSize(node.width, node.height);
+            elements_[node.id] = textBox.get();
+            view.app->add(std::move(textBox));
+            continue;
+        }
+
+        auto button = std::make_unique<Button>(widen(elementText));
+        button->setPosition(node.x, node.y);
+        button->setSize(node.width, node.height);
+        elements_[node.id] = button.get();
+
+        if (node.onClick) {
+            std::vector<std::shared_ptr<Statement>> actions = *node.onClick;
+            RuntimeView* viewPointer = &view;
+
+            button->setOnClick([this, actions, viewPointer] {
+                activeView_ = viewPointer;
+                app_ = viewPointer->app.get();
+                elements_ = viewPointer->elements;
+                executeStatements(actions);
+                viewPointer->elements = elements_;
+
+                if (app_) {
+                    app_->requestRedraw();
+                }
+            });
+        }
+
+        view.app->add(std::move(button));
+    }
+
+    view.elements = elements_;
+}
+
+void PxlRuntime::switchView(const SwitchViewStatement& statement) {
+    auto target = std::find_if(
+        views_.begin(),
+        views_.end(),
+        [&](const auto& view) { return view->id == statement.windowId; }
+    );
+
+    if (target == views_.end()) {
+        throw std::runtime_error("Unknown window id: " + statement.windowId);
+    }
+
+    RuntimeView* oldView = activeView_;
+    RuntimeView* newView = target->get();
+
+    if (!newView->app->isCreated() && !newView->app->create()) {
+        throw std::runtime_error(
+            "Could not recreate window: " + statement.windowId
+        );
+    }
+
+    if (oldView && oldView != newView) {
+        oldView->elements = elements_;
+    }
+
+    // Activate the destination before closing the source. This is important
+    // when switch_view is called from a click handler belonging to the source
+    // window: the destination is already visible before that window is torn
+    // down.
+    activeView_ = newView;
+    app_ = newView->app.get();
+    elements_ = newView->elements;
+    app_->setVisible(true);
+    app_->requestRedraw();
+
+    if (oldView && oldView != newView && statement.destroyWindow) {
+        oldView->app->close(false);
+    }
+}
+
 bool PxlRuntime::loadFile(
     const std::string& path,
     std::string& error
@@ -375,26 +509,9 @@ bool PxlRuntime::loadFile(
         Interpreter interpreter;
         ProgramNode program = interpreter.parseFile(path);
 
-        AppOptions options;
-        options.title = widen(program.title);
-        options.width = program.width;
-        options.height = program.height;
-        options.iconPath = widen(program.iconPath);
-        options.backgroundColor = {
-            program.background.red,
-            program.background.green,
-            program.background.blue
-        };
-
-        if (program.closeTrigger) {
-            options.closeTrigger.enabled = true;
-            options.closeTrigger.message = widen(
-                program.closeTrigger->message
-            );
-            options.closeTrigger.option = CloseDialogOption::YesNo;
-        }
-
-        auto app = std::make_unique<App>(options);
+        views_.clear();
+        activeView_ = nullptr;
+        app_ = nullptr;
         elements_.clear();
         variables_.clear();
         statements_.clear();
@@ -411,59 +528,25 @@ bool PxlRuntime::loadFile(
             variables_[variable.name] = variable.value;
         }
 
-        app_ = std::move(app);
-
-        for (const ElementNode& node : program.elements) {
-            std::string elementText;
-            if (const auto* plainText = std::get_if<std::string>(&node.text)) {
-                elementText = *plainText;
-            } else {
-                elementText = renderText(
-                    std::get<UpdateAction::TextTemplate>(node.text)
-                );
-            }
-
-            if (node.type == ElementType::Label) {
-                auto label = std::make_unique<Label>(widen(elementText));
-                label->setPosition(node.x, node.y);
-                label->setSize(node.width, node.height);
-
-                elements_[node.id] = label.get();
-                app_->add(std::move(label));
-                continue;
-            }
-
-            if (node.type == ElementType::TextBox) {
-                auto textBox = std::make_unique<TextBox>(widen(elementText));
-                textBox->setPlaceholder(widen(node.placeholder));
-                textBox->setPosition(node.x, node.y);
-                textBox->setSize(node.width, node.height);
-
-                elements_[node.id] = textBox.get();
-                app_->add(std::move(textBox));
-                continue;
-            }
-
-            auto button = std::make_unique<Button>(widen(elementText));
-            button->setPosition(node.x, node.y);
-            button->setSize(node.width, node.height);
-
-            elements_[node.id] = button.get();
-
-            if (node.onClick) {
-                std::vector<std::shared_ptr<Statement>> actions = *node.onClick;
-
-                button->setOnClick([this, actions] {
-                    executeStatements(actions);
-
-                    if (app_) {
-                        app_->requestRedraw();
-                    }
-                });
-            }
-
-            app_->add(std::move(button));
+        for (const WindowNode& window : program.windows) {
+            auto view = std::make_unique<RuntimeView>();
+            configureView(*view, window);
+            views_.push_back(std::move(view));
         }
+
+        auto mainView = std::find_if(
+            views_.begin(),
+            views_.end(),
+            [](const auto& view) { return view->id == "main"; }
+        );
+
+        if (mainView == views_.end()) {
+            mainView = views_.begin();
+        }
+
+        activeView_ = mainView->get();
+        app_ = activeView_->app.get();
+        elements_ = activeView_->elements;
 
         statements_ = std::move(program.statements);
         triggers_ = std::move(program.triggers);
@@ -471,7 +554,9 @@ bool PxlRuntime::loadFile(
         return true;
     } catch (const std::exception& exception) {
         error = exception.what();
-        app_.reset();
+        views_.clear();
+        activeView_ = nullptr;
+        app_ = nullptr;
         elements_.clear();
         variables_.clear();
         statements_.clear();
@@ -486,24 +571,34 @@ int PxlRuntime::run() {
         return 1;
     }
 
-    if (!app_->create()) {
-        return 1;
-    }
+    for (auto& view : views_) {
+        if (!view->app->create()) return 1;
+        view->app->setVisible(view.get() == activeView_);
 
-    app_->setOnMouseMove([this](MousePosition) {
-        try {
-            fireMouseMoveTriggers();
-            app_->requestRedraw();
-        } catch (const std::exception&) {
-        }
-    });
-    app_->setOnTick([this] {
-        try {
-            checkTriggers();
-            app_->requestRedraw();
-        } catch (const std::exception&) {
-        }
-    });
+        RuntimeView* viewPointer = view.get();
+        view->app->setOnMouseMove([this, viewPointer](MousePosition) {
+            try {
+                activeView_ = viewPointer;
+                app_ = viewPointer->app.get();
+                elements_ = viewPointer->elements;
+                fireMouseMoveTriggers();
+                viewPointer->elements = elements_;
+                app_->requestRedraw();
+            } catch (const std::exception&) {
+            }
+        });
+        view->app->setOnTick([this, viewPointer] {
+            try {
+                activeView_ = viewPointer;
+                app_ = viewPointer->app.get();
+                elements_ = viewPointer->elements;
+                checkTriggers();
+                viewPointer->elements = elements_;
+                app_->requestRedraw();
+            } catch (const std::exception&) {
+            }
+        });
+    }
 
     try {
         executeStatements(statements_);

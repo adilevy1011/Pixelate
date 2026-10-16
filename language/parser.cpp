@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <unordered_set>
 #include <utility>
 
 Parser::Parser(std::vector<Token> tokens)
@@ -57,7 +58,6 @@ int Parser::consumeNumber(const char* message) {
 
 ProgramNode Parser::parse() {
     ProgramNode program;
-    bool foundWindow = false;
 
     while (current().kind != TokenKind::End) {
         Token block = consume(
@@ -66,12 +66,7 @@ ProgramNode Parser::parse() {
         );
 
         if (block.text == "window") {
-            if (foundWindow) {
-                throw std::runtime_error("Only one window block is allowed.");
-            }
-
-            foundWindow = true;
-            parseWindowBlock(program);
+            program.windows.push_back(parseWindowBlock());
         } else if (block.text == "script") {
             parseScriptBlock(program);
         } else {
@@ -81,14 +76,43 @@ ProgramNode Parser::parse() {
 
     consume(TokenKind::End, "Unexpected content after window.");
 
-    if (!foundWindow) {
+    if (program.windows.empty()) {
         throw std::runtime_error("A window block is required.");
+    }
+
+    if (program.windows.size() > 1) {
+        std::unordered_set<std::string> ids;
+        for (const WindowNode& window : program.windows) {
+            if (window.id.empty()) {
+                throw std::runtime_error(
+                    "Every window needs an id when multiple windows are defined."
+                );
+            }
+
+            if (!ids.insert(window.id).second) {
+                throw std::runtime_error(
+                    "Window ids must be unique: " + window.id
+                );
+            }
+        }
+    }
+
+    if (program.windows.size() == 1) {
+        const WindowNode& window = program.windows.front();
+        program.title = window.title;
+        program.width = window.width;
+        program.height = window.height;
+        program.iconPath = window.iconPath;
+        program.background = window.background;
+        program.closeTrigger = window.closeTrigger;
+        program.elements = window.elements;
     }
 
     return program;
 }
 
-void Parser::parseWindowBlock(ProgramNode& program) {
+WindowNode Parser::parseWindowBlock() {
+    WindowNode window;
     consume(TokenKind::OpenBrace, "Expected '{' after window.");
 
     while (!match(TokenKind::CloseBrace)) {
@@ -97,31 +121,35 @@ void Parser::parseWindowBlock(ProgramNode& program) {
             "Expected window property or element."
         );
 
-        if (token.text == "title") {
+        if (token.text == "id") {
+            consume(TokenKind::Colon, "Expected ':' after id.");
+            window.id = consumeString("Expected window id.");
+            consume(TokenKind::Semicolon, "Expected ';' after id.");
+        } else if (token.text == "title") {
             consume(TokenKind::Colon, "Expected ':' after title.");
-            program.title = consumeString("Expected window title.");
+            window.title = consumeString("Expected window title.");
             consume(TokenKind::Semicolon, "Expected ';' after title.");
         } else if (token.text == "width") {
             consume(TokenKind::Colon, "Expected ':' after width.");
-            program.width = consumeNumber("Expected window width.");
+            window.width = consumeNumber("Expected window width.");
             consume(TokenKind::Semicolon, "Expected ';' after width.");
         } else if (token.text == "height") {
             consume(TokenKind::Colon, "Expected ':' after height.");
-            program.height = consumeNumber("Expected window height.");
+            window.height = consumeNumber("Expected window height.");
             consume(TokenKind::Semicolon, "Expected ';' after height.");
         } else if (token.text == "iconPath") {
             consume(TokenKind::Colon, "Expected ':' after iconPath.");
-            program.iconPath = consumeString("Expected icon path.");
+            window.iconPath = consumeString("Expected icon path.");
             consume(TokenKind::Semicolon, "Expected ';' after iconPath.");
         } else if (token.text == "background") {
             consume(TokenKind::Colon, "Expected ':' after background.");
-            program.background.red = consumeNumber("Expected red channel.");
-            program.background.green = consumeNumber("Expected green channel.");
-            program.background.blue = consumeNumber("Expected blue channel.");
+            window.background.red = consumeNumber("Expected red channel.");
+            window.background.green = consumeNumber("Expected green channel.");
+            window.background.blue = consumeNumber("Expected blue channel.");
 
-            if (program.background.red < 0 || program.background.red > 255 ||
-                program.background.green < 0 || program.background.green > 255 ||
-                program.background.blue < 0 || program.background.blue > 255) {
+            if (window.background.red < 0 || window.background.red > 255 ||
+                window.background.green < 0 || window.background.green > 255 ||
+                window.background.blue < 0 || window.background.blue > 255) {
                 throw std::runtime_error(
                     "Background color channels must be between 0 and 255."
                 );
@@ -138,11 +166,13 @@ void Parser::parseWindowBlock(ProgramNode& program) {
 
             ElementNode element = parseElement(type);
             element.id = id.text;
-            program.elements.push_back(std::move(element));
+            window.elements.push_back(std::move(element));
         } else {
             throw std::runtime_error("Unknown window property or element.");
         }
     }
+
+    return window;
 }
 
 void Parser::parseScriptBlock(ProgramNode& program) {
@@ -192,7 +222,8 @@ void Parser::parseScriptBlock(ProgramNode& program) {
             statement->value = declaration;
             program.statements.push_back(std::move(statement));
         } else if (command.text == "if" || command.text == "while" ||
-                   command.text == "for" || command.text == "update") {
+                   command.text == "for" || command.text == "update" ||
+                   command.text == "switch_view") {
             --position_;
             program.statements.push_back(parseStatement());
         } else if (command.text == "trigger") {
@@ -571,6 +602,11 @@ std::shared_ptr<Statement> Parser::parseStatement() {
         return parseUpdateStatement();
     }
 
+    if (command.text == "switch_view") {
+        --position_;
+        return parseSwitchViewStatement();
+    }
+
     if (command.text == "trigger") {
         --position_;
         return parseTriggerStatement();
@@ -618,6 +654,47 @@ std::shared_ptr<Statement> Parser::parseStatement() {
     }
 
     throw std::runtime_error("Unknown statement.");
+}
+
+std::shared_ptr<Statement> Parser::parseSwitchViewStatement() {
+    consumeIdentifier("switch_view");
+    consume(TokenKind::OpenParen, "Expected '(' after switch_view.");
+
+    std::string windowId;
+    if (current().kind == TokenKind::String) {
+        windowId = consumeString("Expected window id.");
+    } else {
+        windowId = consume(
+            TokenKind::Identifier,
+            "Expected window id string."
+        ).text;
+    }
+
+    bool destroyWindow = true;
+    if (match(TokenKind::Comma)) {
+        Token option = consume(
+            TokenKind::Identifier,
+            "Expected destroy_window option."
+        );
+
+        if (option.text != "destroy_window") {
+            throw std::runtime_error("Expected destroy_window option.");
+        }
+
+        consume(TokenKind::Equals, "Expected '=' after destroy_window.");
+        Token value = consume(TokenKind::Identifier, "Expected true or false.");
+
+        if (value.text == "true") destroyWindow = true;
+        else if (value.text == "false") destroyWindow = false;
+        else throw std::runtime_error("Expected true or false.");
+    }
+
+    consume(TokenKind::CloseParen, "Expected ')' after switch_view.");
+    consume(TokenKind::Semicolon, "Expected ';' after switch_view.");
+
+    auto statement = std::make_shared<Statement>();
+    statement->value = SwitchViewStatement{windowId, destroyWindow};
+    return statement;
 }
 
 std::vector<std::shared_ptr<Statement>> Parser::parseStatementBlock(

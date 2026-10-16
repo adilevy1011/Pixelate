@@ -88,6 +88,7 @@ ${workspaceFolder}/pixelate.exe
 - programs/06_mouse.pxl demonstrates mouse coordinates and cursor shapes.
 - programs/07_triggers.pxl demonstrates live condition triggers.
 - programs/08_textbox.pxl demonstrates editable textbox input and reading its contents.
+- programs/09_multiple_windows.pxl demonstrates identified windows and `switch_view`.
 - programs/demo.pxl is a general feature demonstration combining several concepts.
 - programs/control_flow.pxl is a larger combined example of conditions, loops, triggers, and mouse coordinates.
 - programs/example.pxl is a smaller language example.

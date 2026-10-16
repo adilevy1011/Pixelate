@@ -1,4 +1,4 @@
-# PXL language reference
+﻿# PXL language reference
 
 ## Program structure
 
@@ -6,7 +6,7 @@ Every program requires one window block and may contain a script block.
 
 ~~~pxl
 window {
-    title: "Example"
+    title: "Example";
 }
 
 script {
@@ -21,25 +21,31 @@ Comments begin with #.
 Supported types are int, short, long, float, double, bool, char, and String.
 
 ~~~pxl
-int count = 5
-short smallNumber = 2
-long largeNumber = 100000
-float ratio = 0.5
-double preciseRatio = 1.25
-bool enabled = true
-char grade = 'A'
-String name = "Pixelate"
+int count = 5;
+short smallNumber = 2;
+long largeNumber = 100000;
+float ratio = 0.5;
+double preciseRatio = 1.25;
+bool enabled = true;
+char grade = 'A';
+String name = "Pixelate";
 ~~~
 
 Variables can be used in conditions and formatted strings.
 
 ## Conditions
 
-Supported comparison operators are ==, !=, <, <=, >, and >=.
+Conditions support `!` negation and these comparison operators: `==`, `!=`, `<`, `<=`, `>`, and `>=`.
 
 ~~~pxl
 if (count == 5) {
-    status.text = "The count is five."
+    status.text = "The count is five.";
+} else {
+    status.text = "The count is not five.";
+}
+
+if (!enabled) {
+    status.text = "The feature is disabled.";
 }
 ~~~
 
@@ -47,11 +53,11 @@ if (count == 5) {
 
 ~~~pxl
 while (count < 8) {
-    count++
+    count++;
 }
 
 for (int i = 0; i < 3; i++) {
-    status.text = "The loop is running."
+    status.text = "The loop is running.";
 }
 ~~~
 
@@ -62,15 +68,15 @@ Loops currently use numeric variables and ++ increments. A safety limit prevents
 Use f before a string and put expressions inside braces.
 
 ~~~pxl
-String appName = "Pixelate"
-int version = 1
+String appName = "Pixelate";
+int version = 1;
 
-info.text = f"{appName} version {version}"
+info.text = f"{appName} version {version}";
 ~~~
 
 Mouse values can also be formatted:
 
 ~~~pxl
-mouseLabel.text = f"X: {mouse.x}, Y: {mouse.y}"
+mouseLabel.text = f"X: {mouse.x}, Y: {mouse.y}";
 ~~~
 

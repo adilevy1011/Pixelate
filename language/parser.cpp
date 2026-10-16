@@ -100,15 +100,19 @@ void Parser::parseWindowBlock(ProgramNode& program) {
         if (token.text == "title") {
             consume(TokenKind::Colon, "Expected ':' after title.");
             program.title = consumeString("Expected window title.");
+            consume(TokenKind::Semicolon, "Expected ';' after title.");
         } else if (token.text == "width") {
             consume(TokenKind::Colon, "Expected ':' after width.");
             program.width = consumeNumber("Expected window width.");
+            consume(TokenKind::Semicolon, "Expected ';' after width.");
         } else if (token.text == "height") {
             consume(TokenKind::Colon, "Expected ':' after height.");
             program.height = consumeNumber("Expected window height.");
+            consume(TokenKind::Semicolon, "Expected ';' after height.");
         } else if (token.text == "iconPath") {
             consume(TokenKind::Colon, "Expected ':' after iconPath.");
             program.iconPath = consumeString("Expected icon path.");
+            consume(TokenKind::Semicolon, "Expected ';' after iconPath.");
         } else if (token.text == "background") {
             consume(TokenKind::Colon, "Expected ':' after background.");
             program.background.red = consumeNumber("Expected red channel.");
@@ -122,11 +126,15 @@ void Parser::parseWindowBlock(ProgramNode& program) {
                     "Background color channels must be between 0 and 255."
                 );
             }
-        } else if (token.text == "label" || token.text == "button") {
+            consume(TokenKind::Semicolon, "Expected ';' after background.");
+        } else if (token.text == "label" || token.text == "button" ||
+                   token.text == "textbox") {
             Token id = consume(TokenKind::Identifier, "Expected element id.");
             ElementType type = token.text == "label"
                 ? ElementType::Label
-                : ElementType::Button;
+                : token.text == "button"
+                    ? ElementType::Button
+                    : ElementType::TextBox;
 
             ElementNode element = parseElement(type);
             element.id = id.text;
@@ -147,22 +155,25 @@ void Parser::parseScriptBlock(ProgramNode& program) {
         if (command.text == "add") {
             Token type = consume(
                 TokenKind::Identifier,
-                "Expected label, button, or CLOSE_TRIGGER after add."
+                "Expected label, button, textbox, or CLOSE_TRIGGER after add."
             );
 
             if (type.text == "CLOSE_TRIGGER") {
                 parseCloseTrigger(program);
-            } else if (type.text == "label" || type.text == "button") {
+            } else if (type.text == "label" || type.text == "button" ||
+                       type.text == "textbox") {
                 ElementType elementType = type.text == "label"
                     ? ElementType::Label
-                    : ElementType::Button;
+                    : type.text == "button"
+                        ? ElementType::Button
+                        : ElementType::TextBox;
                 Token id = consume(TokenKind::Identifier, "Expected element id.");
                 ElementNode element = parseElement(elementType);
                 element.id = id.text;
                 program.elements.push_back(std::move(element));
             } else {
                 throw std::runtime_error(
-                    "Only label, button, and CLOSE_TRIGGER can be added."
+                    "Only label, button, textbox, and CLOSE_TRIGGER can be added."
                 );
             }
         } else if (
@@ -191,7 +202,8 @@ void Parser::parseScriptBlock(ProgramNode& program) {
                 std::get<std::shared_ptr<TriggerStatement>>(statement->value)
             );
         } else if (peek(0).kind == TokenKind::Dot ||
-                   peek(0).kind == TokenKind::Increment) {
+                   peek(0).kind == TokenKind::Increment ||
+                   peek(0).kind == TokenKind::Equals) {
             --position_;
             program.statements.push_back(parseStatement());
         } else {
@@ -270,7 +282,7 @@ VariableDeclaration Parser::parseVariableDeclaration(const std::string& typeName
     }
 
     VariableDeclaration declaration{type, name, value};
-    match(TokenKind::Semicolon);
+    consume(TokenKind::Semicolon, "Expected ';' after variable declaration.");
     return declaration;
 }
 
@@ -287,6 +299,7 @@ void Parser::parseCloseTrigger(ProgramNode& program) {
         if (property.text == "message") {
             consume(TokenKind::Colon, "Expected ':' after message.");
             trigger.message = consumeString("Expected close message.");
+            consume(TokenKind::Semicolon, "Expected ';' after message.");
         } else if (property.text == "options") {
             consume(TokenKind::Colon, "Expected ':' after options.");
             trigger.option = consume(
@@ -299,6 +312,7 @@ void Parser::parseCloseTrigger(ProgramNode& program) {
                     "The only supported CLOSE_TRIGGER option is YESNO."
                 );
             }
+            consume(TokenKind::Semicolon, "Expected ';' after options.");
         } else {
             throw std::runtime_error("Unknown CLOSE_TRIGGER property.");
         }
@@ -310,17 +324,20 @@ void Parser::parseCloseTrigger(ProgramNode& program) {
 void Parser::parseElementIntoProgram(ProgramNode& program) {
     Token typeToken = consume(
         TokenKind::Identifier,
-        "Expected label or button after add."
+        "Expected label, button, or textbox after add."
     );
 
-    if (typeToken.text != "label" && typeToken.text != "button") {
-        throw std::runtime_error("Only label and button can be added.");
+    if (typeToken.text != "label" && typeToken.text != "button" &&
+        typeToken.text != "textbox") {
+        throw std::runtime_error("Only label, button, and textbox can be added.");
     }
 
     Token id = consume(TokenKind::Identifier, "Expected element id.");
     ElementType type = typeToken.text == "label"
         ? ElementType::Label
-        : ElementType::Button;
+        : typeToken.text == "button"
+            ? ElementType::Button
+            : ElementType::TextBox;
 
     ElementNode element = parseElement(type);
     element.id = id.text;
@@ -345,19 +362,33 @@ void Parser::parseElementProperty(ElementNode& element) {
 
     if (property.text == "text") {
         consume(TokenKind::Colon, "Expected ':' after text.");
-        element.text = consumeString("Expected element text.");
+        element.text = parseTextValue();
+        consume(TokenKind::Semicolon, "Expected ';' after text.");
+    } else if (property.text == "placeholder") {
+        if (element.type != ElementType::TextBox) {
+            throw std::runtime_error(
+                "Only textbox elements can use placeholder."
+            );
+        }
+        consume(TokenKind::Colon, "Expected ':' after placeholder.");
+        element.placeholder = consumeString("Expected placeholder text.");
+        consume(TokenKind::Semicolon, "Expected ';' after placeholder.");
     } else if (property.text == "x") {
         consume(TokenKind::Colon, "Expected ':' after x.");
         element.x = consumeNumber("Expected x position.");
+        consume(TokenKind::Semicolon, "Expected ';' after x.");
     } else if (property.text == "y") {
         consume(TokenKind::Colon, "Expected ':' after y.");
         element.y = consumeNumber("Expected y position.");
+        consume(TokenKind::Semicolon, "Expected ';' after y.");
     } else if (property.text == "width") {
         consume(TokenKind::Colon, "Expected ':' after width.");
         element.width = consumeNumber("Expected element width.");
+        consume(TokenKind::Semicolon, "Expected ';' after width.");
     } else if (property.text == "height") {
         consume(TokenKind::Colon, "Expected ':' after height.");
         element.height = consumeNumber("Expected element height.");
+        consume(TokenKind::Semicolon, "Expected ';' after height.");
     } else if (property.text == "onclick") {
         element.onClick = parseClickAction();
     } else {
@@ -365,13 +396,13 @@ void Parser::parseElementProperty(ElementNode& element) {
     }
 }
 
-std::vector<UpdateAction> Parser::parseClickAction() {
+std::vector<std::shared_ptr<Statement>> Parser::parseClickAction() {
     consume(TokenKind::OpenBrace, "Expected '{' after onclick.");
 
-    std::vector<UpdateAction> actions;
+    std::vector<std::shared_ptr<Statement>> actions;
 
     while (!match(TokenKind::CloseBrace)) {
-        actions.push_back(parseUpdateAction());
+        actions.push_back(parseStatement());
     }
 
     return actions;
@@ -449,6 +480,8 @@ UpdateAction Parser::parseObjectProperty(const std::string& targetId) {
         }
     }
 
+    consume(TokenKind::Semicolon, "Expected ';' after update property.");
+
     return action;
 }
 
@@ -514,6 +547,8 @@ UpdateAction Parser::parsePropertyAssignment() {
         }
     }
 
+    consume(TokenKind::Semicolon, "Expected ';' after assignment.");
+
     return action;
 }
 
@@ -568,6 +603,11 @@ std::shared_ptr<Statement> Parser::parseStatement() {
     if (current().kind == TokenKind::Increment) {
         --position_;
         return parseIncrementStatement();
+    }
+
+    if (current().kind == TokenKind::Equals) {
+        --position_;
+        return parseVariableAssignment();
     }
 
     if (current().kind == TokenKind::Dot) {
@@ -651,7 +691,25 @@ Condition Parser::parseCondition(bool parenthesized) {
         consume(TokenKind::OpenParen, "Expected '(' before condition.");
     }
     Condition condition;
+
+    if (match(TokenKind::Bang)) {
+        condition.left = parseValueExpression();
+        condition.hasComparison = false;
+        condition.negated = true;
+        if (parenthesized) {
+            consume(TokenKind::CloseParen, "Expected ')' after condition.");
+        }
+        return condition;
+    }
+
     condition.left = parseValueExpression();
+
+    if (parenthesized && current().kind == TokenKind::CloseParen) {
+        condition.hasComparison = false;
+        consume(TokenKind::CloseParen, "Expected ')' after condition.");
+        return condition;
+    }
+
     condition.operation = parseComparisonOperator();
     condition.right = parseValueExpression();
     if (parenthesized) {
@@ -666,6 +724,17 @@ std::shared_ptr<Statement> Parser::parseIfStatement() {
     auto node = std::make_shared<IfStatement>();
     node->condition = parseCondition();
     node->body = parseStatementBlock("Expected '{' after if condition.");
+
+    if (current().kind == TokenKind::Identifier && current().text == "else") {
+        consumeIdentifier("else");
+
+        if (current().kind == TokenKind::Identifier && current().text == "if") {
+            node->elseBody.push_back(parseIfStatement());
+        } else {
+            node->elseBody = parseStatementBlock("Expected '{' after else.");
+        }
+    }
+
     statement->value = std::move(node);
     return statement;
 }
@@ -713,10 +782,25 @@ std::shared_ptr<Statement> Parser::parseIncrementStatement() {
         "Expected variable before '++'."
     ).text;
     consume(TokenKind::Increment, "Expected '++'.");
-    match(TokenKind::Semicolon);
+    consume(TokenKind::Semicolon, "Expected ';' after increment.");
 
     auto statement = std::make_shared<Statement>();
     statement->value = IncrementStatement{name};
+    return statement;
+}
+
+std::shared_ptr<Statement> Parser::parseVariableAssignment() {
+    VariableAssignment assignment;
+    assignment.name = consume(
+        TokenKind::Identifier,
+        "Expected variable name before '='."
+    ).text;
+    consume(TokenKind::Equals, "Expected '=' after variable name.");
+    assignment.value = parseValueExpression();
+    consume(TokenKind::Semicolon, "Expected ';' after assignment.");
+
+    auto statement = std::make_shared<Statement>();
+    statement->value = std::move(assignment);
     return statement;
 }
 

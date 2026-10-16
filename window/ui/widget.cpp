@@ -3,10 +3,12 @@
 void Widget::setPosition(int x, int y){
     x_ = x;
     y_ = y;
+    syncNativeControl();
 }
 void Widget::setSize(int width, int height){
     width_= width;
     height_ = height;
+    syncNativeControl();
 }
 
 bool Widget::containsPoint(int x, int y) const {

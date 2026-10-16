@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 Lexer::Lexer(std::string source)
@@ -13,6 +14,15 @@ std::vector<Token> Lexer::tokenize() const {
     std::size_t index = 0;
     int line = 1;
     int column = 1;
+
+    // Some editors save UTF-8 files with a byte-order mark. It is metadata,
+    // not part of the PXL program, so ignore it if it appears at the start.
+    if (source_.size() >= 3 &&
+        static_cast<unsigned char>(source_[0]) == 0xEF &&
+        static_cast<unsigned char>(source_[1]) == 0xBB &&
+        static_cast<unsigned char>(source_[2]) == 0xBF) {
+        index = 3;
+    }
 
     auto advance = [&] {
         if (source_[index] == '\n') {
@@ -123,7 +133,9 @@ std::vector<Token> Lexer::tokenize() const {
                         case '"': value.push_back('"'); break;
                         case '\\': value.push_back('\\'); break;
                         default:
-                            throw std::runtime_error("Unknown string escape.");
+                    throw std::runtime_error(
+                        "Unknown string escape at line " +
+                        std::to_string(tokenLine) + ".");
                     }
 
                     advance();
@@ -168,7 +180,9 @@ std::vector<Token> Lexer::tokenize() const {
                     case '\'': value = '\''; break;
                     case '\\': value = '\\'; break;
                     default:
-                        throw std::runtime_error("Unknown character escape.");
+                        throw std::runtime_error(
+                            "Unknown character escape at line " +
+                            std::to_string(tokenLine) + ".");
                 }
             } else {
                 value = source_[index];
@@ -204,11 +218,12 @@ std::vector<Token> Lexer::tokenize() const {
                 }
                 break;
             case '!':
-                if (index + 1 >= source_.size() || source_[index + 1] != '=') {
-                    throw std::runtime_error("Unexpected '!'.");
+                if (index + 1 < source_.size() && source_[index + 1] == '=') {
+                    kind = TokenKind::NotEqual;
+                    advance();
+                } else {
+                    kind = TokenKind::Bang;
                 }
-                kind = TokenKind::NotEqual;
-                advance();
                 break;
             case '<':
                 if (index + 1 < source_.size() && source_[index + 1] == '=') {
@@ -239,7 +254,10 @@ std::vector<Token> Lexer::tokenize() const {
             case '{': kind = TokenKind::OpenBrace; break;
             case '}': kind = TokenKind::CloseBrace; break;
             default:
-                throw std::runtime_error("Unexpected character in source.");
+                throw std::runtime_error(
+                    "Unexpected character '" + std::string(1, current) +
+                    "' at line " + std::to_string(tokenLine) +
+                    ", column " + std::to_string(tokenColumn) + ".");
         }
 
         advance();

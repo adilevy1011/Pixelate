@@ -70,7 +70,10 @@ void App::add(std::unique_ptr<Widget> element) {
 
 void App::requestRedraw() {
     if (impl_->hwnd) {
-        InvalidateRect(impl_->hwnd, nullptr, TRUE);
+        // WM_PAINT clears and redraws the client area itself. Asking Windows
+        // to erase the background first causes a visible erase/draw flash
+        // when live triggers update frequently.
+        InvalidateRect(impl_->hwnd, nullptr, FALSE);
     }
 }
 
@@ -127,7 +130,7 @@ void App::Impl::setBackgroundColor(AppColor color) {
             GCLP_HBRBACKGROUND,
             reinterpret_cast<LONG_PTR>(backgroundBrush)
         );
-        InvalidateRect(hwnd, nullptr, TRUE);
+        InvalidateRect(hwnd, nullptr, FALSE);
     }
 
     if (oldBrush) {
@@ -140,7 +143,7 @@ void App::Impl::setMouseShape(MouseShape shape) {
     mouseShapeConfigured = true;
 
     if (hwnd) {
-        InvalidateRect(hwnd, nullptr, TRUE);
+        InvalidateRect(hwnd, nullptr, FALSE);
     }
 }
 
@@ -256,7 +259,7 @@ bool App::Impl::create() {
         0,
         L"Pixelate",
         options.title.c_str(),
-        WS_OVERLAPPEDWINDOW,
+        WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
         options.width,
@@ -276,6 +279,10 @@ bool App::Impl::create() {
         );
 
         return false;
+    }
+
+    for (auto& element : owner->elements_) {
+        element->attachToWindow(hwnd);
     }
 
     ShowWindow(hwnd, SW_SHOWDEFAULT);
@@ -391,13 +398,18 @@ LRESULT App::Impl::handleMessage(
                 Widget& element = **iterator;
 
                 if (element.onMouseDown(mouseX, mouseY)) {
-                    InvalidateRect(hwnd, nullptr, TRUE);
+                    InvalidateRect(hwnd, nullptr, FALSE);
                     break;
                 }
             }
 
             return 0;
         }
+        case WM_ERASEBKGND:
+            // WM_PAINT fills the invalidated region before drawing widgets.
+            // Prevent the separate erase pass, which is the source of the
+            // white flash/flicker during rapid updates.
+            return 1;
         case WM_MOUSEMOVE:
             if (mouseMoveHandler) {
                 mouseMoveHandler({
@@ -415,14 +427,58 @@ LRESULT App::Impl::handleMessage(
             PAINTSTRUCT paint{};
             HDC deviceContext = BeginPaint(hwnd, &paint);
 
-            // Clear the paint area before drawing transparent text. Without
-            // this, changing a label can leave its previous glyphs behind.
-            FillRect(deviceContext, &paint.rcPaint, backgroundBrush);
+            RECT clientArea{};
+            GetClientRect(hwnd, &clientArea);
 
-            DrawContext context(deviceContext);
+            // Render to an off-screen bitmap first. This prevents the user
+            // from seeing the window halfway through a redraw while live
+            // mouse triggers are changing labels.
+            HDC bufferContext = CreateCompatibleDC(deviceContext);
+            HBITMAP bufferBitmap = CreateCompatibleBitmap(
+                deviceContext,
+                clientArea.right - clientArea.left,
+                clientArea.bottom - clientArea.top
+            );
 
-            for (auto& element : owner->elements_) {
-                element->draw(context);
+            if (bufferContext && bufferBitmap) {
+                HGDIOBJ oldBitmap = SelectObject(bufferContext, bufferBitmap);
+
+                FillRect(bufferContext, &clientArea, backgroundBrush);
+
+                DrawContext context(bufferContext);
+                for (auto& element : owner->elements_) {
+                    element->draw(context);
+                }
+
+                BitBlt(
+                    deviceContext,
+                    paint.rcPaint.left,
+                    paint.rcPaint.top,
+                    paint.rcPaint.right - paint.rcPaint.left,
+                    paint.rcPaint.bottom - paint.rcPaint.top,
+                    bufferContext,
+                    paint.rcPaint.left,
+                    paint.rcPaint.top,
+                    SRCCOPY
+                );
+
+                SelectObject(bufferContext, oldBitmap);
+            } else {
+                // Fall back to direct painting if Windows cannot allocate the
+                // temporary drawing surface.
+                FillRect(deviceContext, &clientArea, backgroundBrush);
+
+                DrawContext context(deviceContext);
+                for (auto& element : owner->elements_) {
+                    element->draw(context);
+                }
+            }
+
+            if (bufferBitmap) {
+                DeleteObject(bufferBitmap);
+            }
+            if (bufferContext) {
+                DeleteDC(bufferContext);
             }
 
             EndPaint(hwnd, &paint);

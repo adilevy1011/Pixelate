@@ -1,4 +1,6 @@
 #pragma once
+#include <windows.h>
+
 class DrawContext;
 
 enum class CursorType {
@@ -11,6 +13,9 @@ public:
     virtual ~Widget() = default;
 
     virtual void draw(DrawContext& context) = 0;
+    virtual void attachToWindow(HWND parent) {
+        (void)parent;
+    }
 
     void setPosition(int x, int y);
     void setSize(int width, int height);
@@ -26,6 +31,7 @@ public:
         return CursorType::Default;
     }
 protected:
+    virtual void syncNativeControl() {}
     int x_ = 0;
     int y_ = 0;
     int width_ = 100;

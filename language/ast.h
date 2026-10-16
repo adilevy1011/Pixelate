@@ -8,7 +8,8 @@
 
 enum class ElementType {
     Label,
-    Button
+    Button,
+    TextBox
 };
 
 enum class VariableType {
@@ -44,6 +45,11 @@ struct ValueExpression {
     std::string variable;
 };
 
+struct VariableAssignment {
+    std::string name;
+    ValueExpression value;
+};
+
 enum class ComparisonOperator {
     Equal,
     NotEqual,
@@ -57,6 +63,8 @@ struct Condition {
     ValueExpression left;
     ComparisonOperator operation;
     ValueExpression right;
+    bool hasComparison = true;
+    bool negated = false;
 };
 
 struct ColorNode {
@@ -84,6 +92,7 @@ struct Statement;
 struct IfStatement {
     Condition condition;
     std::vector<std::shared_ptr<Statement>> body;
+    std::vector<std::shared_ptr<Statement>> elseBody;
 };
 
 struct WhileStatement {
@@ -111,6 +120,7 @@ struct TriggerStatement {
 struct Statement {
     std::variant<
         VariableDeclaration,
+        VariableAssignment,
         UpdateAction,
         UpdateBlock,
         IncrementStatement,
@@ -129,12 +139,13 @@ struct CloseTriggerNode {
 struct ElementNode {
     ElementType type;
     std::string id;
-    std::string text;
+    std::variant<std::string, UpdateAction::TextTemplate> text;
+    std::string placeholder;
     int x = 0;
     int y = 0;
     int width = 100;
     int height = 30;
-    std::optional<std::vector<UpdateAction>> onClick;
+    std::optional<std::vector<std::shared_ptr<Statement>>> onClick;
 };
 
 struct ProgramNode {

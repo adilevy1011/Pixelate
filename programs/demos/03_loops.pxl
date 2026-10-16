@@ -1,0 +1,47 @@
+window {
+    title: "PXL Loops";
+    width: 700;
+    height: 460;
+    background: 245 247 252;
+}
+
+script {
+    int count = 0;
+    int limit = 4;
+
+    add label heading {
+        text: "Loops";
+        x: 40;
+        y: 35;
+        width: 620;
+        height: 45;
+    }
+
+    add label whileResult {
+        text: "The while loop has not run yet.";
+        x: 40;
+        y: 110;
+        width: 620;
+        height: 35;
+    }
+
+    while (count < 2) {
+        count++;
+    }
+
+    whileResult.text = f"The while loop finished with count = {count}.";
+
+    add label forResult {
+        text: "The for loop has not run yet.";
+        x: 40;
+        y: 160;
+        width: 620;
+        height: 35;
+    }
+
+    for (int i = 0; i < limit; i++) {
+        forResult.text = f"The for loop is currently running at i = {i}.";
+    }
+
+    update forResult.text = "The for loop finished after four iterations.";
+}

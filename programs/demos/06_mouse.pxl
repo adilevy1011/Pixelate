@@ -1,0 +1,50 @@
+window {
+    title: "PXL Mouse";
+    width: 700;
+    height: 460;
+    background: 245 247 252;
+}
+
+script {
+    add label heading {
+        text: "Mouse position and cursor shapes";
+        x: 40;
+        y: 35;
+        width: 620;
+        height: 45;
+    }
+
+    add label position {
+        text: "Move the mouse over the window.";
+        x: 40;
+        y: 110;
+        width: 620;
+        height: 35;
+    }
+
+    add button handButton {
+        text: "Use hand cursor";
+        x: 40;
+        y: 190;
+        width: 220;
+        height: 55;
+        onclick {
+            update mouse.shape = HAND;
+        }
+    }
+
+    add button arrowButton {
+        text: "Use arrow cursor";
+        x: 300;
+        y: 190;
+        width: 220;
+        height: 55;
+        onclick {
+            update mouse.shape = ARROW;
+        }
+    }
+
+    trigger(mouseMove) {
+        position.text = f"Mouse position: X = {mouse.x}, Y = {mouse.y}";
+    }
+}

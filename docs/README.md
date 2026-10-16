@@ -1,4 +1,4 @@
-# Getting started with Pixelate
+﻿# Getting started with Pixelate
 
 Pixelate is a small Windows UI library and interpreted language for creating graphical applications with .pxl files.
 
@@ -33,19 +33,19 @@ Create a file such as programs/my_app.pxl:
 
 ~~~pxl
 window {
-    title: "My First Pixelate App"
-    width: 800
-    height: 600
-    background: 240 245 250
+    title: "My First Pixelate App";
+    width: 800;
+    height: 600;
+    background: 240 245 250;
 }
 
 script {
     add label greeting {
-        text: "Hello from Pixelate!"
-        x: 50
-        y: 50
-        width: 300
-        height: 40
+        text: "Hello from Pixelate!";
+        x: 50;
+        y: 50;
+        width: 300;
+        height: 40;
     }
 }
 ~~~
@@ -80,8 +80,16 @@ ${workspaceFolder}/pixelate.exe
 
 ## Project examples
 
-- programs/demo.pxl is a general feature demonstration.
-- programs/control_flow.pxl demonstrates conditions, loops, triggers, and live mouse coordinates.
+- programs/01_variables.pxl demonstrates primitive variables and formatted strings.
+- programs/02_conditions.pxl demonstrates if/else and boolean conditions.
+- programs/03_loops.pxl demonstrates while loops, for loops, and increments.
+- programs/04_updates.pxl demonstrates single-field and block updates.
+- programs/05_buttons.pxl demonstrates button actions and state changes.
+- programs/06_mouse.pxl demonstrates mouse coordinates and cursor shapes.
+- programs/07_triggers.pxl demonstrates live condition triggers.
+- programs/08_textbox.pxl demonstrates editable textbox input and reading its contents.
+- programs/demo.pxl is a general feature demonstration combining several concepts.
+- programs/control_flow.pxl is a larger combined example of conditions, loops, triggers, and mouse coordinates.
 - programs/example.pxl is a smaller language example.
 
 Pixelate is under development, so syntax and runtime behavior may change.

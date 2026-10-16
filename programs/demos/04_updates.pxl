@@ -1,0 +1,44 @@
+window {
+    title: "PXL Updates";
+    width: 700;
+    height: 460;
+    background: 245 247 252;
+}
+
+script {
+    add label heading {
+        text: "Updating widgets and the window";
+        x: 40;
+        y: 35;
+        width: 620;
+        height: 45;
+    }
+
+    add label message {
+        text: "This label will be updated.";
+        x: 40;
+        y: 110;
+        width: 620;
+        height: 35;
+    }
+
+    add button changeButton {
+        text: "Change everything";
+        x: 40;
+        y: 180;
+        width: 230;
+        height: 55;
+        onclick {
+            update message {
+                text: "The label, title, and background changed.";
+                x: 80;
+                y: 280;
+                width: 540;
+                height: 40;
+            }
+
+            update window.title = "The title was updated";
+            update window.background = 225 235 250;
+        }
+    }
+}

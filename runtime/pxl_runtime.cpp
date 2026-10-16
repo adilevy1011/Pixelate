@@ -4,6 +4,7 @@
 #include "../window/app.h"
 #include "../window/ui/button.h"
 #include "../window/ui/label.h"
+#include "../window/ui/textbox.h"
 
 #include <exception>
 #include <sstream>
@@ -35,6 +36,20 @@ VariableValue PxlRuntime::evaluateExpression(
         return expression.variable == "mouse.x" ? position.x : position.y;
     }
 
+    const std::size_t dot = expression.variable.find('.');
+    if (dot != std::string::npos &&
+        expression.variable.substr(dot + 1) == "text") {
+        const std::string id = expression.variable.substr(0, dot);
+        auto element = elements_.find(id);
+
+        if (element != elements_.end()) {
+            if (auto* textBox = dynamic_cast<TextBox*>(element->second)) {
+                const std::wstring value = textBox->text();
+                return std::string(value.begin(), value.end());
+            }
+        }
+    }
+
     auto variable = variables_.find(expression.variable);
     if (variable == variables_.end()) {
         throw std::runtime_error("Unknown variable: " + expression.variable);
@@ -45,6 +60,22 @@ VariableValue PxlRuntime::evaluateExpression(
 
 bool PxlRuntime::evaluateCondition(const Condition& condition) const {
     const VariableValue left = evaluateExpression(condition.left);
+
+    if (!condition.hasComparison) {
+        bool truthy = std::visit([](const auto& value) {
+            using Type = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<Type, bool>) {
+                return value;
+            } else if constexpr (std::is_same_v<Type, std::string>) {
+                return !value.empty();
+            } else {
+                return value != 0;
+            }
+        }, left);
+
+        return condition.negated ? !truthy : truthy;
+    }
+
     const VariableValue right = evaluateExpression(condition.right);
 
     auto numeric = [](const VariableValue& value, double& result) {
@@ -178,6 +209,8 @@ void PxlRuntime::applyUpdateAction(const UpdateAction& action) {
         label->setText(widen(text));
     } else if (auto* button = dynamic_cast<Button*>(element->second)) {
         button->setText(widen(text));
+    } else if (auto* textBox = dynamic_cast<TextBox*>(element->second)) {
+        textBox->setText(widen(text));
     }
 }
 
@@ -263,6 +296,14 @@ void PxlRuntime::executeStatement(const Statement& statement) {
         return;
     }
 
+    if (const auto* assignment = std::get_if<VariableAssignment>(&statement.value)) {
+        if (variables_.find(assignment->name) == variables_.end()) {
+            throw std::runtime_error("Unknown variable: " + assignment->name);
+        }
+        variables_[assignment->name] = evaluateExpression(assignment->value);
+        return;
+    }
+
     if (const auto* update = std::get_if<UpdateAction>(&statement.value)) {
         applyUpdateAction(*update);
         return;
@@ -284,6 +325,8 @@ void PxlRuntime::executeStatement(const Statement& statement) {
             &statement.value)) {
         if (evaluateCondition((*ifStatement)->condition)) {
             executeStatements((*ifStatement)->body);
+        } else {
+            executeStatements((*ifStatement)->elseBody);
         }
         return;
     }
@@ -368,30 +411,50 @@ bool PxlRuntime::loadFile(
             variables_[variable.name] = variable.value;
         }
 
+        app_ = std::move(app);
+
         for (const ElementNode& node : program.elements) {
+            std::string elementText;
+            if (const auto* plainText = std::get_if<std::string>(&node.text)) {
+                elementText = *plainText;
+            } else {
+                elementText = renderText(
+                    std::get<UpdateAction::TextTemplate>(node.text)
+                );
+            }
+
             if (node.type == ElementType::Label) {
-                auto label = std::make_unique<Label>(widen(node.text));
+                auto label = std::make_unique<Label>(widen(elementText));
                 label->setPosition(node.x, node.y);
                 label->setSize(node.width, node.height);
 
                 elements_[node.id] = label.get();
-                app->add(std::move(label));
+                app_->add(std::move(label));
                 continue;
             }
 
-            auto button = std::make_unique<Button>(widen(node.text));
+            if (node.type == ElementType::TextBox) {
+                auto textBox = std::make_unique<TextBox>(widen(elementText));
+                textBox->setPlaceholder(widen(node.placeholder));
+                textBox->setPosition(node.x, node.y);
+                textBox->setSize(node.width, node.height);
+
+                elements_[node.id] = textBox.get();
+                app_->add(std::move(textBox));
+                continue;
+            }
+
+            auto button = std::make_unique<Button>(widen(elementText));
             button->setPosition(node.x, node.y);
             button->setSize(node.width, node.height);
 
             elements_[node.id] = button.get();
 
             if (node.onClick) {
-                std::vector<UpdateAction> actions = *node.onClick;
+                std::vector<std::shared_ptr<Statement>> actions = *node.onClick;
 
                 button->setOnClick([this, actions] {
-                    for (const UpdateAction& action : actions) {
-                        applyUpdateAction(action);
-                    }
+                    executeStatements(actions);
 
                     if (app_) {
                         app_->requestRedraw();
@@ -399,10 +462,9 @@ bool PxlRuntime::loadFile(
                 });
             }
 
-            app->add(std::move(button));
+            app_->add(std::move(button));
         }
 
-        app_ = std::move(app);
         statements_ = std::move(program.statements);
         triggers_ = std::move(program.triggers);
         triggerStates_.assign(triggers_.size(), false);

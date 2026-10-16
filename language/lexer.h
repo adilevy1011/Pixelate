@@ -11,6 +11,7 @@ enum class TokenKind {
     Colon,
     Dot,
     Equals,
+    Bang,
     EqualEqual,
     NotEqual,
     Less,

@@ -1,4 +1,4 @@
-# VS Code extension
+﻿# VS Code extension
 
 The pixelate folder contains the VS Code extension prototype.
 

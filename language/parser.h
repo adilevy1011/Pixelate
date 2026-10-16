@@ -39,6 +39,7 @@ private:
     std::shared_ptr<Statement> parseWhileStatement();
     std::shared_ptr<Statement> parseForStatement();
     std::shared_ptr<Statement> parseIncrementStatement();
+    std::shared_ptr<Statement> parseVariableAssignment();
     std::shared_ptr<Statement> parseTriggerStatement();
     UpdateAction parsePropertyAssignment();
     std::shared_ptr<Statement> parseUpdateStatement();
@@ -46,7 +47,7 @@ private:
     UpdateAction parseObjectProperty(const std::string& targetId);
     std::variant<std::string, UpdateAction::TextTemplate> parseTextValue();
     void parseElementProperty(ElementNode& element);
-    std::vector<UpdateAction> parseClickAction();
+    std::vector<std::shared_ptr<Statement>> parseClickAction();
     UpdateAction parseUpdateAction();
 
     std::vector<Token> tokens_;

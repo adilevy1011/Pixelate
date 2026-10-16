@@ -1,6 +1,4 @@
 #pragma once
-#include <windows.h>
-
 class DrawContext;
 
 enum class CursorType {
@@ -13,7 +11,9 @@ public:
     virtual ~Widget() = default;
 
     virtual void draw(DrawContext& context) = 0;
-    virtual void attachToWindow(HWND parent) {
+    // The platform backend supplies an opaque native parent handle. Generic
+    // widgets do not need to know which window system produced it.
+    virtual void attachToWindow(void* parent) {
         (void)parent;
     }
 

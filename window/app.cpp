@@ -2,7 +2,7 @@
 #include <utility>
 #include <windows.h>
 #include <utility>
-#include "ui/draw_context.h"
+#include "platform/windows/win32_draw_context.h"
 #include <windowsx.h>
 struct App::Impl {
     AppOptions options;
@@ -311,7 +311,7 @@ bool App::Impl::create() {
     }
 
     for (auto& element : owner->elements_) {
-        element->attachToWindow(hwnd);
+        element->attachToWindow(static_cast<void*>(hwnd));
     }
 
     ShowWindow(hwnd, SW_SHOWDEFAULT);
@@ -474,7 +474,7 @@ LRESULT App::Impl::handleMessage(
 
                 FillRect(bufferContext, &clientArea, backgroundBrush);
 
-                DrawContext context(bufferContext);
+                Win32DrawContext context(bufferContext);
                 for (auto& element : owner->elements_) {
                     element->draw(context);
                 }
@@ -497,7 +497,7 @@ LRESULT App::Impl::handleMessage(
                 // temporary drawing surface.
                 FillRect(deviceContext, &clientArea, backgroundBrush);
 
-                DrawContext context(deviceContext);
+                Win32DrawContext context(deviceContext);
                 for (auto& element : owner->elements_) {
                     element->draw(context);
                 }

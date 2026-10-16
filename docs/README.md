@@ -10,21 +10,21 @@ This repository includes the interpreter executable, example programs, and a VS 
 - A cloned copy of this GitHub repository
 - VS Code, if you want syntax highlighting and the run button
 
-No compiler is required just to run the included pixelate.exe.
+No compiler is required just to run the included `bin\pixelate.exe`.
 
 ## Run your first program
 
 Clone or download the repository, open PowerShell in the repository folder, and run:
 
 ~~~powershell
-.\pixelate.exe programs\demo.pxl
+.\bin\pixelate.exe programs\demos\01_variables.pxl
 ~~~
 
 You can run the other examples with:
 
 ~~~powershell
-.\pixelate.exe programs\control_flow.pxl
-.\pixelate.exe programs\example.pxl
+.\bin\pixelate.exe programs\demos\02_conditions.pxl
+.\bin\pixelate.exe programs\demos\09_multiple_windows.pxl
 ~~~
 
 ## Create a program
@@ -53,7 +53,7 @@ script {
 Run it with:
 
 ~~~powershell
-.\pixelate.exe programs\my_app.pxl
+.\bin\pixelate.exe programs\my_app.pxl
 ~~~
 
 ## VS Code extension
@@ -65,10 +65,10 @@ The pixelate folder contains the extension source. To use it during development:
 3. Open a .pxl file in the development host.
 4. Use the Run Pixelate button or the Command Palette command Pixelate: Run Current File.
 
-The extension expects the executable at:
+The VS Code extension runs `pixelate.exe` from the system `PATH` by default:
 
 ~~~text
-${workspaceFolder}/pixelate.exe
+pixelate.exe
 ~~~
 
 ## Documentation
@@ -77,6 +77,7 @@ ${workspaceFolder}/pixelate.exe
 - [Windows and widgets](ui.md)
 - [Events and mouse support](events.md)
 - [VS Code extension](vscode.md)
+- [Architecture and platform backends](architecture.md)
 
 ## Project examples
 

@@ -1,51 +1,11 @@
 #pragma once
 #include <vector>
 #include "ui/widget.h"
+#include "platform/platform_types.h"
 #include <memory>
 #include <functional>
 #include <string>
 
-struct AppColor {
-    int red = 255;
-    int green = 255;
-    int blue = 255;
-};
-
-enum class CloseDialogOption {
-    YesNo
-};
-
-struct CloseTrigger {
-    bool enabled = false;
-    std::wstring message = L"Do you really want to exit?";
-    CloseDialogOption option = CloseDialogOption::YesNo;
-};
-
-enum class MouseShape {
-    Arrow,
-    IBeam,
-    Wait,
-    Cross,
-    UpArrow,
-    Size,
-    Icon,
-    SizeNWSE,
-    SizeNESW,
-    SizeWE,
-    SizeNS,
-    SizeAll,
-    No,
-    Hand,
-    AppStarting,
-    Help,
-    Pin,
-    Person
-};
-
-struct MousePosition {
-    int x = 0;
-    int y = 0;
-};
 /**
  * Define your app's structure by settings it's options
  * Possible options:

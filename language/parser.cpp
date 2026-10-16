@@ -97,6 +97,33 @@ ProgramNode Parser::parse() {
         }
     }
 
+    // Elements declared in a script belong to the application's window.  Keep
+    // them when views are built from WindowNode, instead of letting the
+    // single-window compatibility copy below overwrite them.
+    if (!program.elements.empty()) {
+        auto target = program.windows.begin();
+
+        if (program.windows.size() > 1) {
+            const auto mainWindow = std::find_if(
+                program.windows.begin(),
+                program.windows.end(),
+                [](const WindowNode& window) {
+                    return window.id == "main";
+                }
+            );
+
+            if (mainWindow != program.windows.end()) {
+                target = mainWindow;
+            }
+        }
+
+        target->elements.insert(
+            target->elements.end(),
+            program.elements.begin(),
+            program.elements.end()
+        );
+    }
+
     if (program.windows.size() == 1) {
         const WindowNode& window = program.windows.front();
         program.title = window.title;

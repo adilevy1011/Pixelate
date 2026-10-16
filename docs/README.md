@@ -92,7 +92,7 @@ A VSCode extension for Pixelate is currently also under development in parallel 
 - [Language reference](language.md)
 - [Windows, Linux, and widgets](ui.md)
 - [Events and mouse support](events.md)
-- [VS Code extension](vscode.md)
+- [VS Code extension](https://github.com/adilevy1011/Pixelate_vscode)
 - [Architecture and platform backends](architecture.md)
 
 ## Project examples

@@ -18,7 +18,7 @@ These parts should remain reusable across Windows, macOS, and Linux:
 The generic widgets do not need to know whether they are running on Win32,
 Cocoa, or X11/Wayland.
 
-## Current Windows backend
+## Current platform backends
 
 Windows-specific code is under `window/platform/windows/`:
 
@@ -26,6 +26,18 @@ Windows-specific code is under `window/platform/windows/`:
 - `win32_native_textbox.cpp` and `win32_native_textarea.cpp` implement native editable Windows controls.
 - `platform_types.h` contains shared widget text style and font-family values.
 - `window/app.cpp` currently contains the Win32 window/event-loop adapter.
+
+### Linux (experimental)
+
+Linux support is under `window/platform/linux/`:
+
+- `gtk3_app.cpp` implements the GTK 3 window and event-loop adapter.
+- `gtk3_draw_context.*` implements drawing with Cairo and Pango.
+- `gtk3_native_textbox.cpp` and `gtk3_native_textarea.cpp` implement GTK text controls.
+
+The Linux backend is functional but experimental. Native font availability,
+desktop theme differences, and window-system details can affect appearance
+and behavior.
 
 The `App` public API remains unchanged, so the runtime and PXL programs do not
 need to change when a new backend is introduced.
@@ -37,5 +49,6 @@ native textbox contract, and the App window/event-loop adapter while keeping
 the public interfaces and platform-neutral types the same. The Windows files
 should remain isolated from the new backend.
 
-The current build is intentionally still Windows-specific. This refactor
-creates the boundaries incrementally without changing current behavior.
+The CMake build selects the Windows or Linux backend based on the host
+platform. The backend boundary is still evolving while Pixelate remains under
+early development.

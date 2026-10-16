@@ -22,5 +22,7 @@ The extension defaults to:
 ${workspaceFolder}/pixelate.exe
 ~~~
 
-Change the executable path through the pixelate.executablePath setting when necessary.
+Change the executable path through the `pixelate.executablePath` setting when
+necessary. On Linux, point it at the CMake-built `pixelate` executable, for
+example `${workspaceFolder}/build/pixelate`.
 

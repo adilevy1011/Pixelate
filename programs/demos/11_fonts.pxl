@@ -56,9 +56,9 @@ window {
 
     label changeSize {
         text: "Change the greeting size:",
-        x: 50,
+        x: 30,
         y: 500,
-        width: 120,
+        width: 140,
         fontSize: 12,
 
     }

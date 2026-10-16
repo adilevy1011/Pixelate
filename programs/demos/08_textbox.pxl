@@ -17,10 +17,19 @@ script {
     add textbox nameInput {
         text: "",
         placeholder: "Type your name here",
-        x: 40,
-        y: 110,
+        x: 30,
+        y: 100,
         width: 360,
         height: 32,
+    }
+
+    add textbox lastInput {
+        text: "",
+        placeholder: "Type your last name",
+        x: 30,
+        y: 140,
+        width: 360,
+        height:32
     }
 
     add label result {

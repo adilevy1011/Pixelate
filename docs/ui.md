@@ -1,4 +1,4 @@
-# Windows and widgets
+# Windows, Linux, and widgets
 
 ## Window options
 
@@ -9,7 +9,7 @@ The window block supports:
 | title | Window title text. |
 | width | Window width in pixels. |
 | height | Window height in pixels. |
-| iconPath | Path to an .ico file. Relative paths are resolved from the current directory, then beside `pixelate.exe`. |
+| iconPath | Path to an .ico file. Relative paths are resolved from the current directory, then beside the executable. Backend support may vary. |
 | background | RGB color with channels from 0 to 255. |
 
 Defaults are 800x600, Pixelate App, pixelate.ico, and a white background. Place
@@ -76,7 +76,9 @@ add textarea notesInput {
 }
 ~~~
 
-Text styling can be set in a widget declaration:
+Text styling can be set in a widget declaration. Font names are translated by
+each platform backend. On Linux, a requested Windows font may resolve to a
+system fallback if that font is not installed:
 
 ~~~pxl
 add par body {
@@ -113,7 +115,7 @@ They can also be decremented with `body.fontSize--;`.
 Widgets can be declared inside window or added inside script.
 
 Textboxes and textareas are editable while the program is running. The optional
-`placeholder` is shown only while the textbox is empty. Read the current
+`placeholder` is shown while the control is empty and unfocused. Read the current
 contents with `textboxId.text` or `textareaId.text`, including inside an f-string:
 
 ~~~pxl

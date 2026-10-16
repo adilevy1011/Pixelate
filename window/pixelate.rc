@@ -1,0 +1,3 @@
+#include "pixelate_resource.h"
+
+IDI_PIXELATE_ICON ICON "pixelate.ico"

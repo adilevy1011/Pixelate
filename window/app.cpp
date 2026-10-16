@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <utility>
 #include "platform/windows/win32_draw_context.h"
+#include "pixelate_resource.h"
 #include <windowsx.h>
 struct App::Impl {
     AppOptions options;
@@ -273,27 +274,42 @@ bool App::Impl::create() {
         nullptr,
         MAKEINTRESOURCEW(32512)
     );
+    const bool useEmbeddedIcon = options.iconPath == L"pixelate.ico";
     const std::wstring iconPath = resolveIconPath(options.iconPath);
-    windowClass.hIcon = static_cast<HICON>(
-        LoadImageW(
+    windowClass.hIcon = useEmbeddedIcon
+        ? static_cast<HICON>(LoadImageW(
+            hInstance,
+            MAKEINTRESOURCEW(IDI_PIXELATE_ICON),
+            IMAGE_ICON,
+            0,
+            0,
+            LR_DEFAULTSIZE
+        ))
+        : static_cast<HICON>(LoadImageW(
             nullptr,
             iconPath.c_str(),
             IMAGE_ICON,
             0,
             0,
             LR_LOADFROMFILE | LR_DEFAULTSIZE
-        )
-    );
-    windowClass.hIconSm = static_cast<HICON>(
-        LoadImageW(
+        ));
+    windowClass.hIconSm = useEmbeddedIcon
+        ? static_cast<HICON>(LoadImageW(
+            hInstance,
+            MAKEINTRESOURCEW(IDI_PIXELATE_ICON),
+            IMAGE_ICON,
+            16,
+            16,
+            0
+        ))
+        : static_cast<HICON>(LoadImageW(
             nullptr,
             iconPath.c_str(),
             IMAGE_ICON,
             16,
             16,
             LR_LOADFROMFILE
-        )
-    );
+        ));
     backgroundBrush = CreateSolidBrush(RGB(
         options.backgroundColor.red,
         options.backgroundColor.green,

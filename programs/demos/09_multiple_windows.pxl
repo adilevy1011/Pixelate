@@ -47,7 +47,7 @@ window {
         width: 300,
         height: 55,
         onclick {
-            switch_view("main");
+            switch_view("main", destroy_window = false);
         }
     }
 }

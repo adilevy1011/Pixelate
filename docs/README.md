@@ -11,8 +11,7 @@ platform; Linux support is experimental and behavior may still change.
 
 ### Windows
 
-The Windows backend uses Win32 and GDI. A release may include a prebuilt
-`pixelate.exe`, so a compiler is not required just to run that release.
+The Windows backend uses Win32 and GDI. The interpreter for windows is available at [the v1 release](https://github.com/adilevy1011/Pixelate/releases/tag/v0.1.0). You can download the `.exe` and run your .pxl files.
 
 ### Linux (experimental)
 
@@ -26,7 +25,7 @@ sudo apt install build-essential cmake pkg-config libgtk-3-dev libcairo2-dev
 The Linux backend uses GTK 3, Cairo, and Pango. Font appearance depends on
 the fonts installed on the system; Windows font names may use Linux fallbacks.
 
-## Build from source
+#### Build from source
 
 From the repository root:
 
@@ -35,9 +34,6 @@ cmake -S . -B build
 cmake --build build
 ctest --test-dir build --output-on-failure
 ~~~
-
-The parser smoke test checks all demo programs. GUI behavior is still best
-checked by running the demos manually on a desktop session.
 
 ## Run your first program
 
@@ -87,28 +83,9 @@ Run it with the appropriate command above. For Linux:
 ./build/pixelate programs/my_app.pxl
 ~~~
 
-## Installation
-
-After building, install the interpreter, demos, and documentation with:
-
-~~~bash
-cmake --install build --prefix "$HOME/.local"
-~~~
-
-The executable will be installed under `$HOME/.local/bin`. The installed
-demos are under `$HOME/.local/share/pixelate`, and the documentation is under
-`$HOME/.local/share/doc/pixelate`.
-
 ## VS Code extension
 
-The pixelate folder contains the extension source. To use it during
-development, open the repository in VS Code and press F5 to launch an
-Extension Development Host. Open a `.pxl` file in the development host and
-use the run button or the command `Pixelate: Run Current File`.
-
-The extension's `pixelate.executablePath` setting can point to the platform
-executable. On Linux, use `${workspaceFolder}/build/pixelate` during
-development.
+A VSCode extension for Pixelate is currently also under development in parallel to Pixelate. You can find it [here](https://github.com/adilevy1011/Pixelate_vscode).
 
 ## Documentation
 
@@ -126,4 +103,4 @@ development.
   and `switch_view`.
 
 Pixelate is under early development. Syntax, APIs, rendering, and platform
-behavior may change without compatibility guarantees.
+behavior may change.

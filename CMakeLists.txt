@@ -9,7 +9,29 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(PIXELATE_PXLDOC_SOURCE
+    ${CMAKE_CURRENT_SOURCE_DIR}/pxldocs/builtins.pxldoc
+)
+set(PIXELATE_GENERATED_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
+set(PIXELATE_EMBEDDED_PXLDOC_HEADER
+    ${PIXELATE_GENERATED_DIR}/pxldocs_embedded.h
+)
+
+add_custom_command(
+    OUTPUT ${PIXELATE_EMBEDDED_PXLDOC_HEADER}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PIXELATE_GENERATED_DIR}
+    COMMAND ${CMAKE_COMMAND}
+        -DINPUT=${PIXELATE_PXLDOC_SOURCE}
+        -DOUTPUT=${PIXELATE_EMBEDDED_PXLDOC_HEADER}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/tools/embed_pxldocs.cmake
+    DEPENDS
+        ${PIXELATE_PXLDOC_SOURCE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/embed_pxldocs.cmake
+    VERBATIM
+)
+
 set(PIXELATE_COMMON_SOURCES
+    language/docs.cpp
     language/interpreter.cpp
     language/lexer.cpp
     language/parser.cpp
@@ -21,13 +43,17 @@ set(PIXELATE_COMMON_SOURCES
     window/ui/textbox.cpp
     window/ui/widget.cpp
     window/ui/shape.cpp
+    ${PIXELATE_EMBEDDED_PXLDOC_HEADER}
 )
 
 # This target deliberately contains only the platform-neutral implementation.
 # It gives every platform a small, useful compilation target while the native
 # window backend is being implemented.
 add_library(pixelate_core STATIC ${PIXELATE_COMMON_SOURCES})
-target_include_directories(pixelate_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(pixelate_core PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PIXELATE_GENERATED_DIR}
+)
 
 if(WIN32)
     add_executable(pixelate
@@ -82,6 +108,11 @@ install(
     DIRECTORY docs/
     DESTINATION ${CMAKE_INSTALL_DOCDIR}/reference
     FILES_MATCHING PATTERN "*.md"
+)
+install(
+    DIRECTORY pxldocs/
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/pixelate/pxldocs
+    FILES_MATCHING PATTERN "*.pxldoc"
 )
 install(FILES README.md LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
 

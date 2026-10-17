@@ -1,0 +1,53 @@
+name: Sync Pixelate documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "pxldocs/**/*.pxldoc"
+      - ".github/workflows/sync-pxldocs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Pixelate
+        uses: actions/checkout@v4
+        with:
+          path: pixelate
+
+      - name: Checkout Pixelate VS Code extension
+        uses: actions/checkout@v4
+        with:
+          repository: adilevy1011/Pixelate_vscode
+          ref: main
+          path: vscode
+          token: ${{ secrets.PIXELATE_VSCODE_TOKEN }}
+
+      - name: Sync pxldocs
+        run: |
+          rm -rf vscode/pxldocs
+          mkdir -p vscode/pxldocs
+          cp -R pixelate/pxldocs/. vscode/pxldocs/
+
+      - name: Commit and push
+        working-directory: vscode
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add pxldocs
+
+          if git diff --cached --quiet; then
+            echo "No documentation changes."
+            exit 0
+          fi
+
+          git commit -m "Sync pxldocs from Pixelate"
+          git push origin main

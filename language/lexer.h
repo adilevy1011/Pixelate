@@ -21,6 +21,8 @@ enum class TokenKind {
     LessEqual,
     Greater,
     GreaterEqual,
+    AndAnd,
+    OrOr,
     Increment,
     OpenParen,
     CloseParen,

@@ -11,7 +11,15 @@ enum class ElementType {
     Paragraph,
     Button,
     TextBox,
-    TextArea
+    TextArea,
+    Rect,
+    Circle,
+    Triangle
+};
+
+struct PointNode {
+    int x = 0;
+    int y = 0;
 };
 
 enum class VariableType {
@@ -76,6 +84,9 @@ struct Condition {
     ValueExpression right;
     bool hasComparison = true;
     bool negated = false;
+    enum class LogicalOperator { None, And, Or } logical = LogicalOperator::None;
+    std::shared_ptr<Condition> leftCondition;
+    std::shared_ptr<Condition> rightCondition;
 };
 
 struct ColorNode {
@@ -131,6 +142,8 @@ struct SwitchViewStatement {
 
 struct TriggerStatement {
     bool mouseMove = false;
+    std::optional<std::string> key;
+    bool keyCaseInsensitive = false;
     std::optional<Condition> condition;
     std::vector<std::shared_ptr<Statement>> body;
 };
@@ -165,8 +178,18 @@ struct ElementNode {
     int fontSize = 16;
     int x = 0;
     int y = 0;
+    bool xSpecified = false;
+    bool ySpecified = false;
     int width = 100;
     int height = 30;
+    int angle = 0;
+    int radius = 10;
+    PointNode p1;
+    PointNode p2;
+    PointNode p3;
+    bool p1Specified = false;
+    bool p2Specified = false;
+    bool p3Specified = false;
     std::optional<std::vector<std::shared_ptr<Statement>>> onClick;
 };
 

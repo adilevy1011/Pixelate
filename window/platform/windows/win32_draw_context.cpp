@@ -1,5 +1,8 @@
 #include "win32_draw_context.h"
 
+#include <array>
+#include <cmath>
+
 namespace {
 
 const wchar_t* fontName(FontFamily family) {
@@ -35,6 +38,60 @@ void Win32DrawContext::fillRectangle(
     HBRUSH brush = CreateSolidBrush(RGB(70, 120, 220));
 
     FillRect(deviceContext_, &rectangle, brush);
+    DeleteObject(brush);
+}
+
+void Win32DrawContext::drawRectangle(int x, int y, int width, int height, int angle) {
+    const double radians = angle * 3.14159265358979323846 / 180.0;
+    const double centerX = x + width / 2.0;
+    const double centerY = y + height / 2.0;
+    const std::array<std::pair<double, double>, 4> corners = {{
+        {-width / 2.0, -height / 2.0}, {width / 2.0, -height / 2.0},
+        {width / 2.0, height / 2.0}, {-width / 2.0, height / 2.0}
+    }};
+    POINT points[4]{};
+    for (int index = 0; index < 4; ++index) {
+        const double rotatedX = corners[index].first * std::cos(radians) -
+            corners[index].second * std::sin(radians);
+        const double rotatedY = corners[index].first * std::sin(radians) +
+            corners[index].second * std::cos(radians);
+        points[index] = {
+            static_cast<LONG>(std::lround(centerX + rotatedX)),
+            static_cast<LONG>(std::lround(centerY + rotatedY))
+        };
+    }
+    HBRUSH brush = CreateSolidBrush(RGB(70, 120, 220));
+    HGDIOBJ oldBrush = SelectObject(deviceContext_, brush);
+    Polygon(deviceContext_, points, 4);
+    SelectObject(deviceContext_, oldBrush);
+    DeleteObject(brush);
+}
+
+void Win32DrawContext::drawCircle(int x, int y, int radius) {
+    HBRUSH brush = CreateSolidBrush(RGB(70, 120, 220));
+    HGDIOBJ oldBrush = SelectObject(deviceContext_, brush);
+    Ellipse(deviceContext_, x - radius, y - radius, x + radius, y + radius);
+    SelectObject(deviceContext_, oldBrush);
+    DeleteObject(brush);
+}
+
+void Win32DrawContext::drawTriangle(const std::array<PointNode, 3>& points, int angle) {
+    const double radians = angle * 3.14159265358979323846 / 180.0;
+    const double centerX = (points[0].x + points[1].x + points[2].x) / 3.0;
+    const double centerY = (points[0].y + points[1].y + points[2].y) / 3.0;
+    POINT nativePoints[3]{};
+    for (int index = 0; index < 3; ++index) {
+        const double dx = points[index].x - centerX;
+        const double dy = points[index].y - centerY;
+        nativePoints[index] = {
+            static_cast<LONG>(std::lround(centerX + dx * std::cos(radians) - dy * std::sin(radians))),
+            static_cast<LONG>(std::lround(centerY + dx * std::sin(radians) + dy * std::cos(radians)))
+        };
+    }
+    HBRUSH brush = CreateSolidBrush(RGB(70, 120, 220));
+    HGDIOBJ oldBrush = SelectObject(deviceContext_, brush);
+    Polygon(deviceContext_, nativePoints, 3);
+    SelectObject(deviceContext_, oldBrush);
     DeleteObject(brush);
 }
 

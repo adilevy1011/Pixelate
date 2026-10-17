@@ -271,6 +271,22 @@ std::vector<Token> Lexer::tokenize() const {
                     kind = TokenKind::Greater;
                 }
                 break;
+            case '&':
+                if (index + 1 < source_.size() && source_[index + 1] == '&') {
+                    kind = TokenKind::AndAnd;
+                    advance();
+                } else {
+                    throw std::runtime_error("Expected '&' in '&&'.");
+                }
+                break;
+            case '|':
+                if (index + 1 < source_.size() && source_[index + 1] == '|') {
+                    kind = TokenKind::OrOr;
+                    advance();
+                } else {
+                    throw std::runtime_error("Expected '|' in '||'.");
+                }
+                break;
             case '+':
                 if (index + 1 < source_.size() && source_[index + 1] == '+') {
                     kind = TokenKind::Increment;

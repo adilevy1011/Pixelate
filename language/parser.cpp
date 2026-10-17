@@ -1,6 +1,7 @@
 #include "parser.h"
 
 #include <algorithm>
+#include <cctype>
 #include <stdexcept>
 #include <unordered_set>
 #include <utility>
@@ -209,7 +210,8 @@ WindowNode Parser::parseWindowBlock() {
             }
             consumeFieldSeparator("Expected ',' after background.");
         } else if (token.text == "label" || token.text == "par" || token.text == "button" ||
-                   token.text == "textbox" || token.text == "textarea") {
+                   token.text == "textbox" || token.text == "textarea" || token.text == "rect" ||
+                   token.text == "circle" || token.text == "triangle") {
             Token id = consume(TokenKind::Identifier, "Expected element id.");
             ElementType type = token.text == "label"
                 ? ElementType::Label
@@ -219,7 +221,13 @@ WindowNode Parser::parseWindowBlock() {
                     ? ElementType::Button
                     : token.text == "textbox"
                         ? ElementType::TextBox
-                        : ElementType::TextArea;
+                        : token.text == "textarea"
+                            ? ElementType::TextArea
+                            : token.text == "rect"
+                                ? ElementType::Rect
+                                : token.text == "circle"
+                                    ? ElementType::Circle
+                                    : ElementType::Triangle;
 
             ElementNode element = parseElement(type);
             element.id = id.text;
@@ -242,13 +250,14 @@ void Parser::parseScriptBlock(ProgramNode& program) {
         if (command.text == "add") {
             Token type = consume(
                 TokenKind::Identifier,
-                "Expected label, par, button, textbox, textarea, or CLOSE_TRIGGER after add."
+                "Expected label, par, button, textbox, textarea, rect, circle, triangle, or CLOSE_TRIGGER after add."
             );
 
             if (type.text == "CLOSE_TRIGGER") {
                 parseCloseTrigger(program);
             } else if (type.text == "label" || type.text == "par" || type.text == "button" ||
-                       type.text == "textbox" || type.text == "textarea") {
+                       type.text == "textbox" || type.text == "textarea" || type.text == "rect" ||
+                       type.text == "circle" || type.text == "triangle") {
                 ElementType elementType = type.text == "label"
                     ? ElementType::Label
                     : type.text == "par"
@@ -257,14 +266,20 @@ void Parser::parseScriptBlock(ProgramNode& program) {
                         ? ElementType::Button
                         : type.text == "textbox"
                             ? ElementType::TextBox
-                            : ElementType::TextArea;
+                            : type.text == "textarea"
+                                ? ElementType::TextArea
+                                : type.text == "rect"
+                                    ? ElementType::Rect
+                                    : type.text == "circle"
+                                        ? ElementType::Circle
+                                        : ElementType::Triangle;
                 Token id = consume(TokenKind::Identifier, "Expected element id.");
                 ElementNode element = parseElement(elementType);
                 element.id = id.text;
                 program.elements.push_back(std::move(element));
             } else {
                 throw std::runtime_error(
-                    "Only label, par, button, textbox, textarea, and CLOSE_TRIGGER can be added."
+                    "Only label, par, button, textbox, textarea, rect, circle, triangle, and CLOSE_TRIGGER can be added."
                 );
             }
         } else if (
@@ -453,6 +468,17 @@ ElementNode Parser::parseElement(ElementType type) {
         parseElementProperty(element);
     }
 
+    if (type == ElementType::Triangle) {
+        const bool anyPoint = element.p1Specified || element.p2Specified || element.p3Specified;
+        const bool allPoints = element.p1Specified && element.p2Specified && element.p3Specified;
+        if (anyPoint && !allPoints) {
+            throw std::runtime_error("Triangle elements must specify p1, p2, and p3 together.");
+        }
+        if (element.xSpecified != element.ySpecified) {
+            throw std::runtime_error("Triangle elements must specify both x and y together.");
+        }
+    }
+
     return element;
 }
 
@@ -476,10 +502,12 @@ void Parser::parseElementProperty(ElementNode& element) {
     } else if (property.text == "x") {
         consume(TokenKind::Colon, "Expected ':' after x.");
         element.x = consumeNumber("Expected x position.");
+        element.xSpecified = true;
         consumeFieldSeparator("Expected ',' after x.");
     } else if (property.text == "y") {
         consume(TokenKind::Colon, "Expected ':' after y.");
         element.y = consumeNumber("Expected y position.");
+        element.ySpecified = true;
         consumeFieldSeparator("Expected ',' after y.");
     } else if (property.text == "width") {
         consume(TokenKind::Colon, "Expected ':' after width.");
@@ -489,6 +517,32 @@ void Parser::parseElementProperty(ElementNode& element) {
         consume(TokenKind::Colon, "Expected ':' after height.");
         element.height = consumeNumber("Expected element height.");
         consumeFieldSeparator("Expected ',' after height.");
+    } else if (property.text == "angle") {
+        if (element.type != ElementType::Rect && element.type != ElementType::Triangle) {
+            throw std::runtime_error("Only rect and triangle elements can use angle.");
+        }
+        consume(TokenKind::Colon, "Expected ':' after angle.");
+        element.angle = consumeNumber("Expected rectangle angle.");
+        consumeFieldSeparator("Expected ',' after angle.");
+    } else if (property.text == "radius") {
+        if (element.type != ElementType::Circle) throw std::runtime_error("Only circle elements can use radius.");
+        consume(TokenKind::Colon, "Expected ':' after radius.");
+        element.radius = consumeNumber("Expected circle radius.");
+        if (element.radius <= 0) throw std::runtime_error("Circle radius must be greater than zero.");
+        consumeFieldSeparator("Expected ',' after radius.");
+    } else if (property.text == "p1" || property.text == "p2" || property.text == "p3") {
+        if (element.type != ElementType::Triangle) throw std::runtime_error("Only triangle elements can use points.");
+        consume(TokenKind::Colon, "Expected ':' after triangle point.");
+        consume(TokenKind::OpenParen, "Expected '(' before triangle point.");
+        PointNode point;
+        point.x = consumeNumber("Expected triangle point x.");
+        consume(TokenKind::Comma, "Expected ',' between triangle point coordinates.");
+        point.y = consumeNumber("Expected triangle point y.");
+        consume(TokenKind::CloseParen, "Expected ')' after triangle point.");
+        if (property.text == "p1") { element.p1 = point; element.p1Specified = true; }
+        if (property.text == "p2") { element.p2 = point; element.p2Specified = true; }
+        if (property.text == "p3") { element.p3 = point; element.p3Specified = true; }
+        consumeFieldSeparator("Expected ',' after triangle point.");
     } else if (property.text == "font") {
         consume(TokenKind::Colon, "Expected ':' after font.");
         element.font = consume(TokenKind::Identifier, "Expected font constant.").text;
@@ -579,7 +633,8 @@ UpdateAction Parser::parseObjectProperty(const std::string& targetId) {
         color.blue = consumeNumber("Expected blue channel.");
         action.value = color;
     } else if (action.property == "x" || action.property == "y" ||
-               action.property == "width" || action.property == "height") {
+               action.property == "width" || action.property == "height" ||
+               action.property == "angle" || action.property == "radius") {
         action.value = parseValueExpression();
     } else if (action.property == "fontSize") {
         action.value = parseValueExpression();
@@ -661,7 +716,8 @@ UpdateAction Parser::parsePropertyAssignment() {
 
         action.value = color;
     } else if (action.property == "x" || action.property == "y" ||
-               action.property == "width" || action.property == "height") {
+               action.property == "width" || action.property == "height" ||
+               action.property == "angle" || action.property == "radius") {
         action.value = parseValueExpression();
     } else if (action.property == "fontSize") {
         action.value = parseValueExpression();
@@ -885,31 +941,63 @@ Condition Parser::parseCondition(bool parenthesized) {
     if (parenthesized) {
         consume(TokenKind::OpenParen, "Expected '(' before condition.");
     }
+    Condition condition = parseConditionOr();
+    if (parenthesized) {
+        consume(TokenKind::CloseParen, "Expected ')' after condition.");
+    }
+    return condition;
+}
+
+Condition Parser::parseConditionOr() {
+    Condition condition = parseConditionAnd();
+    while (match(TokenKind::OrOr)) {
+        auto combined = std::make_shared<Condition>();
+        combined->logical = Condition::LogicalOperator::Or;
+        combined->leftCondition = std::make_shared<Condition>(std::move(condition));
+        combined->rightCondition = std::make_shared<Condition>(parseConditionAnd());
+        condition = std::move(*combined);
+    }
+    return condition;
+}
+
+Condition Parser::parseConditionAnd() {
+    Condition condition = parseConditionPrimary();
+    while (match(TokenKind::AndAnd)) {
+        auto combined = std::make_shared<Condition>();
+        combined->logical = Condition::LogicalOperator::And;
+        combined->leftCondition = std::make_shared<Condition>(std::move(condition));
+        combined->rightCondition = std::make_shared<Condition>(parseConditionPrimary());
+        condition = std::move(*combined);
+    }
+    return condition;
+}
+
+Condition Parser::parseConditionPrimary() {
+    if (match(TokenKind::OpenParen)) {
+        Condition condition = parseConditionOr();
+        consume(TokenKind::CloseParen, "Expected ')' after condition.");
+        return condition;
+    }
+
     Condition condition;
 
     if (match(TokenKind::Bang)) {
         condition.left = parseValueExpression();
         condition.hasComparison = false;
         condition.negated = true;
-        if (parenthesized) {
-            consume(TokenKind::CloseParen, "Expected ')' after condition.");
-        }
         return condition;
     }
 
     condition.left = parseValueExpression();
 
-    if (parenthesized && current().kind == TokenKind::CloseParen) {
+    if (current().kind == TokenKind::CloseParen ||
+        current().kind == TokenKind::AndAnd || current().kind == TokenKind::OrOr) {
         condition.hasComparison = false;
-        consume(TokenKind::CloseParen, "Expected ')' after condition.");
         return condition;
     }
 
     condition.operation = parseComparisonOperator();
     condition.right = parseValueExpression();
-    if (parenthesized) {
-        consume(TokenKind::CloseParen, "Expected ')' after condition.");
-    }
     return condition;
 }
 
@@ -983,9 +1071,10 @@ std::shared_ptr<Statement> Parser::parseIncrementStatement() {
             TokenKind::Identifier,
             "Expected numeric property before '++'."
         ).text;
-        if (property != "fontSize") {
+        if (property != "fontSize" && property != "radius" && property != "angle" &&
+            property != "x" && property != "y") {
             throw std::runtime_error(
-                "Only fontSize can be incremented on widgets."
+                "Only x, y, fontSize, radius, and angle can be incremented on widgets."
             );
         }
     }
@@ -1025,6 +1114,24 @@ std::shared_ptr<Statement> Parser::parseTriggerStatement() {
     if (current().kind == TokenKind::Identifier && current().text == "mouseMove") {
         consume(TokenKind::Identifier, "Expected trigger event.");
         node->mouseMove = true;
+    } else if (current().kind == TokenKind::Identifier &&
+               (current().text == "onkey" || current().text == "onkeyci")) {
+        const bool insensitive = current().text == "onkeyci";
+        ++position_;
+        consume(TokenKind::OpenParen, "Expected '(' after key trigger.");
+        const std::string key = consumeString("Expected key name in key trigger.");
+        consume(TokenKind::CloseParen, "Expected ')' after key name.");
+        static const std::vector<std::string> special = {
+            "space", "esc", "enter", "shift", "alt", "up", "down", "left", "right", "tab"
+        };
+        const bool singleLetter = key.size() == 1 &&
+            std::isalpha(static_cast<unsigned char>(key[0]));
+        if (!singleLetter &&
+            std::find(special.begin(), special.end(), key) == special.end()) {
+            throw std::runtime_error("Key triggers accept one letter or a named special key.");
+        }
+        node->key = key;
+        node->keyCaseInsensitive = insensitive;
     } else {
         node->condition = parseCondition(false);
     }

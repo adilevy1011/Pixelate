@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+#include <array>
+#include "../../language/ast.h"
 #include "../platform/platform_types.h"
 
 class DrawContext {
@@ -13,6 +15,10 @@ public:
         int width,
         int height
     ) = 0;
+
+    virtual void drawRectangle(int x, int y, int width, int height, int angle) = 0;
+    virtual void drawCircle(int x, int y, int radius) = 0;
+    virtual void drawTriangle(const std::array<PointNode, 3>& points, int angle) = 0;
 
     virtual void drawText(
         const std::wstring& text,

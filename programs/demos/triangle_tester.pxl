@@ -1,0 +1,47 @@
+window {
+    title: "Triangle tester",
+    width: 700,
+    height: 500,
+
+    triangle defaultTriangle {
+        x: 520,
+        y: 100,
+    }
+
+    triangle placedTriangle {
+        x: 350,
+        y: 180,
+        p1: (0, -40),
+        p2: (-35, 30),
+        p3: (35, 30),
+        angle: 15,
+    }
+}
+
+script {
+    add triangle movingTriangle {
+        p1: (500, 300),
+        p2: (550, 390),
+        p3: (450, 390),
+    }
+
+    trigger(onkey("left")) {
+        movingTriangle.x--;
+    }
+
+    trigger(onkey("right")) {
+        movingTriangle.x++;
+    }
+
+    trigger(onkey("up")) {
+        movingTriangle.y--;
+    }
+
+    trigger(onkey("down")) {
+        movingTriangle.y++;
+    }
+
+    trigger(onkey("space")) {
+        placedTriangle.angle = placedTriangle.angle + 45;
+    }
+}

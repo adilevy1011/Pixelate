@@ -1,5 +1,6 @@
 #pragma once
 #include "../platform/platform_types.h"
+#include "../../language/ast.h"
 
 class DrawContext;
 

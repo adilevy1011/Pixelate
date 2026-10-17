@@ -31,6 +31,7 @@ class App {
 public:
     using MouseMoveHandler = std::function<void(MousePosition)>;
     using TickHandler = std::function<void()>;
+    using KeyDownHandler = std::function<void(const std::string&)>;
 
     explicit App(AppOptions options = {});
     ~App();
@@ -47,6 +48,7 @@ public:
     MousePosition mousePosition() const;
     void setOnMouseMove(MouseMoveHandler handler);
     void setOnTick(TickHandler handler);
+    void setOnKeyDown(KeyDownHandler handler);
     void close(bool quitMessage = true);
     void setVisible(bool visible);
     bool isCreated() const;

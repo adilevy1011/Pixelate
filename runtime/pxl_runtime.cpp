@@ -7,10 +7,12 @@
 #include "../window/ui/paragraph.h"
 #include "../window/ui/textbox.h"
 #include "../window/ui/textarea.h"
+#include "../window/ui/shape.h"
 
 #include <exception>
 #include <iostream>
 #include <algorithm>
+#include <cctype>
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
@@ -139,6 +141,8 @@ VariableValue PxlRuntime::evaluateExpression(
     if (dot != std::string::npos &&
         (expression.variable.substr(dot + 1) == "font" ||
          expression.variable.substr(dot + 1) == "fontSize" ||
+         expression.variable.substr(dot + 1) == "angle" ||
+         expression.variable.substr(dot + 1) == "radius" ||
          expression.variable.substr(dot + 1) == "x" ||
          expression.variable.substr(dot + 1) == "y" ||
          expression.variable.substr(dot + 1) == "width" ||
@@ -152,6 +156,15 @@ VariableValue PxlRuntime::evaluateExpression(
             }
             if (expression.variable.substr(dot + 1) == "fontSize") {
                 return style.size;
+            }
+
+            if (auto* shape = dynamic_cast<ShapeWidget*>(element->second)) {
+                if (expression.variable.substr(dot + 1) == "angle") {
+                    return shape->angle();
+                }
+                if (expression.variable.substr(dot + 1) == "radius") {
+                    return shape->radius();
+                }
             }
 
             const std::string property = expression.variable.substr(dot + 1);
@@ -171,6 +184,14 @@ VariableValue PxlRuntime::evaluateExpression(
 }
 
 bool PxlRuntime::evaluateCondition(const Condition& condition) const {
+    if (condition.logical != Condition::LogicalOperator::None) {
+        const bool left = evaluateCondition(*condition.leftCondition);
+        if (condition.logical == Condition::LogicalOperator::And) {
+            return left && evaluateCondition(*condition.rightCondition);
+        }
+        return left || evaluateCondition(*condition.rightCondition);
+    }
+
     const VariableValue left = evaluateExpression(condition.left);
 
     if (!condition.hasComparison) {
@@ -322,6 +343,19 @@ void PxlRuntime::applyUpdateAction(const UpdateAction& action) {
         return;
     }
 
+    if (auto* shape = dynamic_cast<ShapeWidget*>(widget)) {
+        if (action.property == "angle") {
+            const auto number = numericValue();
+            if (number) shape->setAngle(*number);
+            return;
+        }
+        if (action.property == "radius") {
+            const auto number = numericValue();
+            if (number && *number > 0) shape->setRadius(*number);
+            return;
+        }
+    }
+
     if (action.property == "font" || action.property == "fontSize") {
         TextStyle style = widget->textStyle();
         if (action.property == "font") {
@@ -409,10 +443,26 @@ void PxlRuntime::fireMouseMoveTriggers() {
     }
 }
 
+void PxlRuntime::fireKeyTriggers(const std::string& key) {
+    for (const auto& trigger : triggers_) {
+        if (!trigger->key) continue;
+        const std::string& expected = *trigger->key;
+        bool matches = expected.size() == key.size();
+        for (std::size_t index = 0; matches && index < key.size(); ++index) {
+            const auto lhs = static_cast<unsigned char>(expected[index]);
+            const auto rhs = static_cast<unsigned char>(key[index]);
+            matches = trigger->keyCaseInsensitive
+                ? std::tolower(lhs) == std::tolower(rhs)
+                : lhs == rhs;
+        }
+        if (matches) executeStatements(trigger->body);
+    }
+}
+
 void PxlRuntime::checkTriggers() {
     for (std::size_t index = 0; index < triggers_.size(); ++index) {
         const auto& trigger = triggers_[index];
-        if (trigger->mouseMove || !trigger->condition) continue;
+        if (trigger->mouseMove || trigger->key || !trigger->condition) continue;
 
         const bool active = evaluateCondition(*trigger->condition);
         if (active && !triggerStates_[index]) {
@@ -449,8 +499,39 @@ void PxlRuntime::incrementWidgetProperty(
         throw std::runtime_error("Unknown widget: " + target);
     }
 
+    if (auto* shape = dynamic_cast<ShapeWidget*>(element->second)) {
+        if (property == "x" || property == "y") {
+            int x = shape->x();
+            int y = shape->y();
+            const int amount = decrement ? -1 : 1;
+            if (property == "x") x += amount;
+            else y += amount;
+            shape->setPosition(x, y);
+            return;
+        }
+        if (property == "radius") {
+            const int radius = shape->radius() + (decrement ? -1 : 1);
+            if (radius > 0) shape->setRadius(radius);
+            return;
+        }
+        if (property == "angle") {
+            shape->setAngle(shape->angle() + (decrement ? -1 : 1));
+            return;
+        }
+    }
+
+    if (property == "x" || property == "y") {
+        int x = element->second->x();
+        int y = element->second->y();
+        const int amount = decrement ? -1 : 1;
+        if (property == "x") x += amount;
+        else y += amount;
+        element->second->setPosition(x, y);
+        return;
+    }
+
     if (property != "fontSize") {
-        throw std::runtime_error("Only fontSize can be incremented on widgets.");
+        throw std::runtime_error("Only fontSize, radius, and angle can be incremented on widgets.");
     }
 
     TextStyle style = element->second->textStyle();
@@ -643,6 +724,48 @@ void PxlRuntime::configureView(
             continue;
         }
 
+        if (node.type == ElementType::Rect || node.type == ElementType::Circle ||
+            node.type == ElementType::Triangle) {
+            const ShapeType shapeType = node.type == ElementType::Rect
+                ? ShapeType::Rect
+                : node.type == ElementType::Circle
+                    ? ShapeType::Circle
+                    : ShapeType::Triangle;
+            auto shape = std::make_unique<ShapeWidget>(shapeType);
+            shape->setSize(node.width, node.height);
+            shape->setAngle(node.angle);
+            shape->setRadius(node.radius);
+            if (node.type == ElementType::Triangle) {
+                PointNode p1 = node.p1;
+                PointNode p2 = node.p2;
+                PointNode p3 = node.p3;
+                bool usePosition = false;
+                if (!node.p1Specified) {
+                    // Equilateral triangle with side 10, centroid at (0, 0),
+                    // and its apex pointing upward.
+                    p1 = {0, -6};
+                    p2 = {-5, 3};
+                    p3 = {5, 3};
+                    usePosition = true;
+                } else if (node.xSpecified) {
+                    const double centerX = (p1.x + p2.x + p3.x) / 3.0;
+                    const double centerY = (p1.y + p2.y + p3.y) / 3.0;
+                    const int offsetX = node.x - static_cast<int>(centerX);
+                    const int offsetY = node.y - static_cast<int>(centerY);
+                    p1.x += offsetX; p2.x += offsetX; p3.x += offsetX;
+                    p1.y += offsetY; p2.y += offsetY; p3.y += offsetY;
+                }
+                shape->setPoints(p1, p2, p3);
+                shape->setPosition(usePosition ? node.x : 0, usePosition ? node.y : 0);
+            } else {
+                shape->setPosition(node.x, node.y);
+                shape->setPoints(node.p1, node.p2, node.p3);
+            }
+            elements_[node.id] = shape.get();
+            view.app->add(std::move(shape));
+            continue;
+        }
+
         auto button = std::make_unique<Button>(widen(elementText));
         button->setPosition(node.x, node.y);
         button->setSize(node.width, node.height);
@@ -796,6 +919,18 @@ int PxlRuntime::run() {
                 app_ = viewPointer->app.get();
                 elements_ = viewPointer->elements;
                 fireMouseMoveTriggers();
+                viewPointer->elements = elements_;
+                app_->requestRedraw();
+            } catch (const std::exception& exception) {
+                reportRuntimeError(exception);
+            }
+        });
+        view->app->setOnKeyDown([this, viewPointer](const std::string& key) {
+            try {
+                activeView_ = viewPointer;
+                app_ = viewPointer->app.get();
+                elements_ = viewPointer->elements;
+                fireKeyTriggers(key);
                 viewPointer->elements = elements_;
                 app_->requestRedraw();
             } catch (const std::exception& exception) {

@@ -16,6 +16,46 @@ script {
 
 Comments begin with #.
 
+## Shapes
+
+Windows can contain filled rectangles, circles, and triangles. Rectangle angles
+are in degrees and increase clockwise. Circle `x` and `y` specify its center;
+triangle points use absolute window coordinates, and triangle angles rotate the
+calculated triangle clockwise around its centroid.
+
+Triangles may instead omit all three points to create an upward-pointing
+equilateral triangle with side length 10. If `x` and `y` are supplied with a
+complete point set, the calculated triangle is translated so its centroid is
+at that position. `p1`, `p2`, and `p3` must be supplied together, as must `x`
+and `y`.
+
+Shape coordinates can be changed or incremented with normal widget properties,
+for example `marker.x++`. For triangles, `x` and `y` translate all three points.
+
+~~~pxl
+window {
+    rect panel {
+        x: 50,
+        y: 30,
+        width: 200,
+        height: 100,
+        angle: 90,
+    }
+
+    circle dot {
+        x: 300,
+        y: 150,
+        radius: 10,
+    }
+
+    triangle marker {
+        p1: (400, 100),
+        p2: (450, 200),
+        p3: (350, 200),
+    }
+}
+~~~
+
 ## Multiple windows
 
 A single window may omit its id. If a file contains multiple windows, every
@@ -72,6 +112,14 @@ if (count == 5) {
 
 if (!enabled) {
     status.text = "The feature is disabled.";
+}
+
+Conditions can combine comparisons and boolean values with `&&` and `||`.
+`&&` binds more tightly than `||`; parentheses can group subconditions.
+
+~~~pxl
+if (score >= 60 && (passed == true || bonus == true)) {
+    update status.text = "Passed";
 }
 ~~~
 

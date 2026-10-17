@@ -1,0 +1,53 @@
+window {
+    title: "Shape demo",
+    rect panel {
+        x: 50,
+        y: 30,
+        width: 200,
+        height: 100,
+        angle: 15,
+    }
+    circle cir {
+        x: 350,
+        y: 150,
+        radius: 40,
+    }
+    triangle marker {
+        p1: (500, 80),
+        p2: (580, 220),
+        p3: (420, 220),
+        angle: 20,
+    }
+}
+
+script {
+    trigger(onkey("up")) {
+        cir.radius++;
+    }
+
+    trigger(onkey("down")) {
+        cir.radius--;
+    }
+    trigger(onkey("left")){
+        panel.angle--;
+    }
+    trigger(onkey("right")){
+        panel.angle++;
+    }
+
+    trigger(onkeyci("w")){
+        marker.x++;
+    }
+    trigger(onkeyci("s")){
+        marker.y--;
+    }
+    trigger(onkeyci("d")){
+        marker.x++;
+    }
+    trigger(onkeyci("a")){
+        marker.x--;
+    }
+    trigger(onkey("space")){
+        update marker.angle = 45;
+    }
+}

@@ -3,6 +3,8 @@
 
 #include <pango/pangocairo.h>
 
+#include <cmath>
+
 namespace {
 
 PangoLayout* createLayout(
@@ -45,6 +47,38 @@ void Gtk3DrawContext::fillRectangle(
     cairo_set_source_rgb(cairo_, 70.0 / 255.0, 120.0 / 255.0, 220.0 / 255.0);
     cairo_rectangle(cairo_, x, y, width, height);
     cairo_fill(cairo_);
+}
+
+void Gtk3DrawContext::drawRectangle(int x, int y, int width, int height, int angle) {
+    cairo_save(cairo_);
+    cairo_translate(cairo_, x + width / 2.0, y + height / 2.0);
+    cairo_rotate(cairo_, angle * 3.14159265358979323846 / 180.0);
+    cairo_set_source_rgb(cairo_, 70.0 / 255.0, 120.0 / 255.0, 220.0 / 255.0);
+    cairo_rectangle(cairo_, -width / 2.0, -height / 2.0, width, height);
+    cairo_fill(cairo_);
+    cairo_restore(cairo_);
+}
+
+void Gtk3DrawContext::drawCircle(int x, int y, int radius) {
+    cairo_set_source_rgb(cairo_, 70.0 / 255.0, 120.0 / 255.0, 220.0 / 255.0);
+    cairo_arc(cairo_, x, y, radius, 0, 2 * 3.14159265358979323846);
+    cairo_fill(cairo_);
+}
+
+void Gtk3DrawContext::drawTriangle(const std::array<PointNode, 3>& points, int angle) {
+    const double radians = angle * 3.14159265358979323846 / 180.0;
+    const double centerX = (points[0].x + points[1].x + points[2].x) / 3.0;
+    const double centerY = (points[0].y + points[1].y + points[2].y) / 3.0;
+    cairo_set_source_rgb(cairo_, 70.0 / 255.0, 120.0 / 255.0, 220.0 / 255.0);
+    cairo_save(cairo_);
+    cairo_translate(cairo_, centerX, centerY);
+    cairo_rotate(cairo_, radians);
+    cairo_move_to(cairo_, points[0].x - centerX, points[0].y - centerY);
+    cairo_line_to(cairo_, points[1].x - centerX, points[1].y - centerY);
+    cairo_line_to(cairo_, points[2].x - centerX, points[2].y - centerY);
+    cairo_close_path(cairo_);
+    cairo_fill(cairo_);
+    cairo_restore(cairo_);
 }
 
 void Gtk3DrawContext::drawText(

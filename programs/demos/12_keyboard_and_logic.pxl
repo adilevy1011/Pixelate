@@ -1,0 +1,34 @@
+window {
+    title: "Keyboard and Logic",
+    width: 600,
+    height: 300,
+
+    label status {
+        text: "Press a key",
+        x: 30,
+        y: 30,
+        width: 500,
+        height: 40,
+    }
+}
+
+script {
+    bool ready = true;
+    bool alternate = false;
+
+    trigger(onkey("a")) {
+        update status.text = "a was pressed!";
+    }
+
+    trigger(onkeyci("w")) {
+        update status.text = "w or W was pressed!";
+    }
+
+    trigger(onkey("space")) {
+        update status.text = "space was pressed!";
+    }
+
+    if (ready && (alternate == false || ready == true)) {
+        update status.text = "Ready: press a, W, or space";
+    }
+}

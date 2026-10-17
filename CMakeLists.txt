@@ -20,6 +20,7 @@ set(PIXELATE_COMMON_SOURCES
     window/ui/textarea.cpp
     window/ui/textbox.cpp
     window/ui/widget.cpp
+    window/ui/shape.cpp
 )
 
 # This target deliberately contains only the platform-neutral implementation.

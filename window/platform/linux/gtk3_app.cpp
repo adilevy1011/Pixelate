@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <utility>
+#include <cctype>
 
 struct App::Impl {
     AppOptions options;
@@ -19,6 +20,7 @@ struct App::Impl {
     MousePosition lastMousePosition{};
     MouseMoveHandler mouseMoveHandler;
     TickHandler tickHandler;
+    KeyDownHandler keyDownHandler;
 
     ~Impl();
 
@@ -30,11 +32,13 @@ struct App::Impl {
     MousePosition mousePosition() const;
     void setOnMouseMove(MouseMoveHandler handler);
     void setOnTick(TickHandler handler);
+    void setOnKeyDown(KeyDownHandler handler);
     void close(bool quitMessage);
 
     static gboolean onDraw(GtkWidget*, cairo_t*, gpointer);
     static gboolean onButtonPress(GtkWidget*, GdkEventButton*, gpointer);
     static gboolean onMotion(GtkWidget*, GdkEventMotion*, gpointer);
+    static gboolean onKeyPress(GtkWidget*, GdkEventKey*, gpointer);
     static gboolean onDelete(GtkWidget*, GdkEvent*, gpointer);
     static void onDestroy(GtkWidget*, gpointer);
     static gboolean onTick(gpointer);
@@ -111,6 +115,7 @@ void App::setOnMouseMove(MouseMoveHandler handler) {
     impl_->setOnMouseMove(std::move(handler));
 }
 void App::setOnTick(TickHandler handler) { impl_->setOnTick(std::move(handler)); }
+void App::setOnKeyDown(KeyDownHandler handler) { impl_->setOnKeyDown(std::move(handler)); }
 void App::close(bool quitMessage) { impl_->close(quitMessage); }
 
 void App::setVisible(bool visible) {
@@ -144,6 +149,7 @@ void App::Impl::setOnMouseMove(MouseMoveHandler handler) {
 }
 
 void App::Impl::setOnTick(TickHandler handler) { tickHandler = std::move(handler); }
+void App::Impl::setOnKeyDown(KeyDownHandler handler) { keyDownHandler = std::move(handler); }
 
 void App::Impl::close(bool quitMessage) {
     if (!window) return;
@@ -168,11 +174,14 @@ bool App::Impl::create() {
 
     gtk_widget_add_events(
         drawingArea,
-        GDK_BUTTON_PRESS_MASK | GDK_POINTER_MOTION_MASK
+        GDK_BUTTON_PRESS_MASK | GDK_POINTER_MOTION_MASK | GDK_KEY_PRESS_MASK
     );
     g_signal_connect(drawingArea, "draw", G_CALLBACK(onDraw), this);
     g_signal_connect(drawingArea, "button-press-event", G_CALLBACK(onButtonPress), this);
     g_signal_connect(drawingArea, "motion-notify-event", G_CALLBACK(onMotion), this);
+    g_signal_connect(drawingArea, "key-press-event", G_CALLBACK(onKeyPress), this);
+    gtk_widget_set_can_focus(drawingArea, TRUE);
+    gtk_widget_grab_focus(drawingArea);
     g_signal_connect(window, "delete-event", G_CALLBACK(onDelete), this);
     g_signal_connect(window, "destroy", G_CALLBACK(onDestroy), this);
 
@@ -237,6 +246,36 @@ gboolean App::Impl::onMotion(
     };
     app->updateCursor(event->x, event->y);
     if (app->mouseMoveHandler) app->mouseMoveHandler(app->lastMousePosition);
+    return FALSE;
+}
+
+gboolean App::Impl::onKeyPress(
+    GtkWidget*, GdkEventKey* event, gpointer data
+) {
+    auto* app = static_cast<Impl*>(data);
+    std::string key;
+    switch (event->keyval) {
+        case GDK_KEY_space: key = "space"; break;
+        case GDK_KEY_Escape: key = "esc"; break;
+        case GDK_KEY_Return: key = "enter"; break;
+        case GDK_KEY_Shift_L:
+        case GDK_KEY_Shift_R: key = "shift"; break;
+        case GDK_KEY_Alt_L:
+        case GDK_KEY_Alt_R: key = "alt"; break;
+        case GDK_KEY_Up: key = "up"; break;
+        case GDK_KEY_Down: key = "down"; break;
+        case GDK_KEY_Left: key = "left"; break;
+        case GDK_KEY_Right: key = "right"; break;
+        case GDK_KEY_Tab: key = "tab"; break;
+        default: {
+            gunichar character = gdk_keyval_to_unicode(event->keyval);
+            if (character < 128 && std::isalpha(static_cast<unsigned char>(character))) {
+                key = std::string(1, static_cast<char>(character));
+            }
+            break;
+        }
+    }
+    if (app->keyDownHandler && !key.empty()) app->keyDownHandler(key);
     return FALSE;
 }
 

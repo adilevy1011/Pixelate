@@ -24,6 +24,19 @@ trigger(mouseMove) {
     mouseX.text = f"Mouse X: {mouse.x}";
     mouseY.text = f"Mouse Y: {mouse.y}";
 }
+
+Keyboard triggers use `onkey("...")`. Named keys include `space`, `esc`, `enter`,
+`shift`, `alt`, `up`, `down`, `left`, `right`, and `tab`; one-character names
+match case-sensitively. Use `onkeyci` to listen for either case.
+
+~~~pxl
+trigger(onkey("a")) {
+    update status.text = "a was pressed!";
+}
+
+trigger(onkeyci("w")) {
+    update status.text = "w or W was pressed!";
+}
 ~~~
 
 A condition trigger runs when a condition changes from false to true.

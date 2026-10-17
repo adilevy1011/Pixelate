@@ -5,6 +5,7 @@
 #include "platform/windows/win32_draw_context.h"
 #include "pixelate_resource.h"
 #include <windowsx.h>
+#include <cctype>
 struct App::Impl {
     AppOptions options;
     App* owner = nullptr;
@@ -16,6 +17,7 @@ struct App::Impl {
     bool mouseShapeConfigured = false;
     MouseMoveHandler mouseMoveHandler;
     TickHandler tickHandler;
+    KeyDownHandler keyDownHandler;
 
     ~Impl();
 
@@ -27,6 +29,7 @@ struct App::Impl {
     MousePosition mousePosition() const;
     void setOnMouseMove(MouseMoveHandler handler);
     void setOnTick(TickHandler handler);
+    void setOnKeyDown(KeyDownHandler handler);
     void close(bool quitMessage);
 
     static LRESULT CALLBACK WindowProc(
@@ -102,6 +105,10 @@ void App::setOnMouseMove(MouseMoveHandler handler) {
 
 void App::setOnTick(TickHandler handler) {
     impl_->setOnTick(std::move(handler));
+}
+
+void App::setOnKeyDown(KeyDownHandler handler) {
+    impl_->setOnKeyDown(std::move(handler));
 }
 
 void App::close(bool quitMessage) {
@@ -186,6 +193,10 @@ void App::Impl::setOnTick(TickHandler handler) {
     tickHandler = std::move(handler);
 }
 
+void App::Impl::setOnKeyDown(KeyDownHandler handler) {
+    keyDownHandler = std::move(handler);
+}
+
 void App::Impl::close(bool quitMessage) {
     if (hwnd) {
         suppressQuitOnDestroy = !quitMessage;
@@ -219,6 +230,29 @@ static HCURSOR loadMouseCursor(MouseShape shape) {
     }
 
     return LoadCursorW(nullptr, MAKEINTRESOURCEW(resource));
+}
+
+static std::string keyName(WPARAM key) {
+    switch (key) {
+        case VK_SPACE: return "space";
+        case VK_ESCAPE: return "esc";
+        case VK_RETURN: return "enter";
+        case VK_SHIFT: return "shift";
+        case VK_MENU: return "alt";
+        case VK_UP: return "up";
+        case VK_DOWN: return "down";
+        case VK_LEFT: return "left";
+        case VK_RIGHT: return "right";
+        case VK_TAB: return "tab";
+        default: break;
+    }
+    if (key >= 'A' && key <= 'Z') {
+        const bool shifted = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+        const bool capsLocked = (GetKeyState(VK_CAPITAL) & 1) != 0;
+        const bool uppercase = shifted != capsLocked;
+        return std::string(1, static_cast<char>(uppercase ? key : key + ('a' - 'A')));
+    }
+    return {};
 }
 
 static bool fileExists(const std::wstring& path) {
@@ -435,6 +469,12 @@ LRESULT App::Impl::handleMessage(
     LPARAM lParam
 ) {
     switch (message) {
+        case WM_KEYDOWN:
+            if (keyDownHandler) {
+                const std::string keyNameValue = keyName(wParam);
+                if (!keyNameValue.empty()) keyDownHandler(keyNameValue);
+            }
+            return 0;
         case WM_SETCURSOR: {
             if (mouseShapeConfigured) {
                 SetCursor(loadMouseCursor(mouseShape));

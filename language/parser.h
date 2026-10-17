@@ -36,6 +36,9 @@ private:
     );
     ValueExpression parseValueExpression();
     Condition parseCondition(bool parenthesized = true);
+    Condition parseConditionOr();
+    Condition parseConditionAnd();
+    Condition parseConditionPrimary();
     ComparisonOperator parseComparisonOperator();
     std::shared_ptr<Statement> parseIfStatement();
     std::shared_ptr<Statement> parseWhileStatement();

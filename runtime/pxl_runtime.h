@@ -41,6 +41,7 @@ private:
     std::string renderText(const UpdateAction::TextTemplate& text) const;
     void checkTriggers();
     void fireMouseMoveTriggers();
+    void fireKeyTriggers(const std::string& key);
     void switchView(const SwitchViewStatement& statement);
     void configureView(RuntimeView& view, const WindowNode& window);
     void reportRuntimeError(const std::exception& exception) const;
